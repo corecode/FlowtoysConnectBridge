@@ -1,5 +1,5 @@
-#define VERSION 1
-//#define VERSION 2
+//#define VERSION 1
+#define VERSION 2
 
 
 #include "Config.h"
@@ -8,8 +8,9 @@ Config conf;
 #define USE_SERIAL 1
 #if USE_SERIAL
   #define SERIAL_DEBUG 1
-  #define USE_BLE 0
+  #define USE_BLE 1
 #endif
+
 
 #define USE_RF 1
 
