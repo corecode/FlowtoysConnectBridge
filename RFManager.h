@@ -228,7 +228,7 @@ class RFManager :
 
             if(!found)
             {
-              if(syncing)
+              if(syncing || numActivePrivateGroups == 0)
               {
                 bool syncingPage = 1; //page 2
                 bool syncingMode = 0; //mode 1
@@ -244,7 +244,12 @@ class RFManager :
                       privateGroups[numActivePrivateGroups].setup(receivingPacket.groupID, &radio);
                       privateGroups[numActivePrivateGroups].updateFromPacket(receivingPacket);
                       Config::instance->setRFNetworkId(numActivePrivateGroups, receivingPacket.groupID);
-                      sendCommand(GROUP_ADDED);
+
+											CommandData groupAdded;
+											groupAdded.type = GROUP_ADDED;
+											groupAdded.value1.intValue = receivingPacket.groupID;
+											sendCommand(groupAdded);
+
                       numActivePrivateGroups++;
                    }else
                    {
