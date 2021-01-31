@@ -341,6 +341,7 @@ void setup()
 
 #if USE_RF
   rfManager.init();
+  rfManager.setCommandCallback(&commandCallback);
   rfManager.setRFDataCallback(&rfDataCallback);
 #endif
 
