@@ -11,24 +11,46 @@ struct SyncPacket {
   uint8_t global_val;
   uint8_t global_speed;
   uint8_t global_density;
-  uint8_t lfo_active : 1;
-  uint8_t hue_active : 1;
-  uint8_t sat_active : 1;
-  uint8_t val_active : 1;
-  uint8_t speed_active : 1;
-  uint8_t density_active : 1;
-  uint8_t reserved[2];
+  bool lfo_active : 1;
+  bool hue_active : 1;
+  bool sat_active : 1;
+  bool val_active : 1;
+  bool speed_active : 1;
+  bool density_active : 1;
+  bool reserved[2];
   uint8_t page;
   uint8_t mode;
-  uint8_t adjust_active : 1;
-  uint8_t wakeup : 1;
-  uint8_t poweroff : 1;
-  uint8_t force_reload : 1;
-  uint8_t save : 1;
-  uint8_t _delete : 1;
-  uint8_t alternate : 1;
+  bool adjust_active : 1;
+  bool wakeup : 1;
+  bool poweroff : 1;
+  bool force_reload : 1;
+  bool save : 1;
+  bool _delete : 1;
+  bool alternate : 1;
 };
 #pragma pack(pop)
+
+void print_bytes( void *ptr, size_t size )
+{
+    //char *buf = (char*) ptr;
+    unsigned char *p = (unsigned char*)ptr ;
+
+    for( size_t i = 0; i < size; i++ )
+    {
+        printf( "%02hhX ", p[i] ) ;
+    }
+    printf( "\n" ) ;
+
+    for( size_t i = 0; i < size; i++ )
+    {
+        for( short j = 7; j >= 0; j-- )
+        {
+            printf( "%d", ( p[i] >> j ) & 1 ) ;
+        }
+        printf(" ");
+    }
+    printf("\n");
+}
 
 class RFGroup
 {

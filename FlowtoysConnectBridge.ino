@@ -97,8 +97,6 @@ void patternCallback(String providerId, CommandProvider::PatternData data)
 
 void commandCallback(String providerId, CommandProvider::CommandData data)
 {
-  DBG("Got Command from " + providerId + " : " + data.type);
-
   if (providerId == "OSC") timeAtLastOSCReceived = millis() / 1000.0f;
   else timeAtLastBLEReceived = millis() / 1000.0f;
 
