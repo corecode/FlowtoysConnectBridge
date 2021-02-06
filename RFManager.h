@@ -237,7 +237,7 @@ class RFManager :
 
             if(!found)
             {
-              if(syncing || numActivePrivateGroups == 0)
+              if(syncing)
               {
                 bool syncingPage = 1; //page 2
                 bool syncingMode = 0; //mode 1
