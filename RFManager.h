@@ -193,6 +193,8 @@ class RFManager :
         }
       }
     }
+
+    uint32_t padding;
     
     //SEND / RECEIVE
     bool receivePacket() {
@@ -201,6 +203,13 @@ class RFManager :
 
         while (radio.available()) {
           radio.read(&receivingPacket, sizeof(SyncPacket));
+
+          if (padding != receivingPacket.padding) {
+            DBG("PACKET RECEIVE!!!!!? adjust_active: " + String(receivingPacket.adjust_active) + " poweroff: " + String(receivingPacket.poweroff) + " force_reload: " + String(receivingPacket.force_reload) + " alternate: " + String(receivingPacket.alternate) + " LFO[0]: " + String(receivingPacket.lfo[0]) + " LFO[1]: " + String(receivingPacket.lfo[1]) + " LFO[2]: " + String(receivingPacket.lfo[2]) + " LFO[3]: " + String(receivingPacket.lfo[3]));
+            padding = receivingPacket.padding;
+            print_bytes(&receivingPacket, sizeof(receivingPacket));
+          }
+
 
           //reverse group bytes because address is reversed in rf packet but we read end of address as data to get groupID
           
