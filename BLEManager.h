@@ -34,6 +34,9 @@ class BLEManager
 
           String message = String(pCharacteristic->getValue().c_str());
           DBG("[BLE] Received " + message);
+          // unsigned char *p = (unsigned char*)"ABC" ;
+          pCharacteristic->setValue("ABC");
+          pCharacteristic->notify();
           SerialManager::instance->parseMessage(message);
         }
     };
@@ -43,6 +46,7 @@ class BLEManager
 
     BLEServer *pServer = NULL;
     BLECharacteristic * pTxCharacteristic;
+    BLECharacteristic * pRxCharacteristic;
     bool deviceConnected = false;
     bool oldDeviceConnected = false;
     uint8_t txValue = 0;
@@ -79,7 +83,7 @@ class BLEManager
 
       pTxCharacteristic->addDescriptor(new BLE2902());
 
-      BLECharacteristic * pRxCharacteristic = pService->createCharacteristic(
+      pRxCharacteristic = pService->createCharacteristic(
           CHARACTERISTIC_UUID_RX,
           BLECharacteristic::PROPERTY_WRITE
                                               );

@@ -45,6 +45,7 @@ public:
       while (size--) {
         msg.fill(Udp.read());
       }
+
       
       if (!msg.hasError()) 
       {     
@@ -101,6 +102,7 @@ public:
           p.lfo3 = msg.getInt(12);
           p.lfo4 = msg.getInt(13);
 
+         // DBG("RECEIVED PATTERN:" + String(msg.address));
           sendPattern(p);
         } else if(msg.fullMatch("/wifiSettings"))
         {
