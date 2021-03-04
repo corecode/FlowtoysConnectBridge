@@ -44,8 +44,9 @@ public:
 
   bool receiveUDP()
   {
-      while (int packetSize = udp.parsePacket())
+      while (int packetSize = udp.parsePacket())  
       {
+         //DBG("Receiving !");
           int numRead = udp.read(streamBuffer, STREAM_MAX_PACKET_SIZE);
          
           if(numRead == 0) return false;
@@ -88,7 +89,6 @@ public:
 
   void start()
   {
-    DBG("Start stream with port 8888"); 
       udp.begin(8888);
       udp.flush();
   }

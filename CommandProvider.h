@@ -1,6 +1,8 @@
 #pragma once
 #include <FastLED.h>
 
+class SyncPacket;
+
 class CommandProvider
 {
 public:
@@ -19,7 +21,7 @@ public:
     enum CommandType { 
       SYNC_RF, STOP_SYNC, RESET_SYNC, GROUP_ADDED, SET_WIFI_CREDENTIALS, SET_GLOBAL_CONFIG,
       WAKEUP, POWEROFF, 
-      PLAY_SHOW, PAUSE_SHOW, STOP_SHOW, RESUME_SHOW, SEEK_SHOW, RF_DATA 
+      PLAY_SHOW, PAUSE_SHOW, STOP_SHOW, RESUME_SHOW, SEEK_SHOW, RF_DATA, WIFI_CHANGE
       };
     
     union var
@@ -27,6 +29,7 @@ public:
       int intValue;
       float floatValue;
       char * stringValue;
+      SyncPacket* syncPacket;
     };
       
     struct CommandData

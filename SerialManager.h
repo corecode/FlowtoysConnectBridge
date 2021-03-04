@@ -172,6 +172,10 @@ class SerialManager :
       return i;
     }
 
+		void sendCommandFromRF(String command) {
+			DBG("Send command from RF to Serial: " + command);
+		}
+
     void sendTrigger(String name)
     {
       Serial.println(name);

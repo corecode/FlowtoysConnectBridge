@@ -30,16 +30,28 @@ class BLEManager
     };
 
     class DataCallback: public BLECharacteristicCallbacks {
+        void onRead(BLECharacteristic *pCharacteristic) {
+          DBG("[BLE] onRead...");
+        }
         void onWrite(BLECharacteristic *pCharacteristic) {
-
+          DBG("[BLE] onWrite...");
           String message = String(pCharacteristic->getValue().c_str());
           DBG("[BLE] Received " + message);
-          // unsigned char *p = (unsigned char*)"ABC" ;
-          pCharacteristic->setValue("ABC");
-          pCharacteristic->notify();
           SerialManager::instance->parseMessage(message);
         }
     };
+
+    // before setup()
+    static void my_gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t* param) {
+      DBG("GATTC event handler");
+      // ESP_LOGW(LOG_TAG, "custom gattc event handler, event: %d", (uint8_t)event);
+    }
+    static void my_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gatts_cb_param_t* param) {
+      DBG("GATTS event handler");
+    }
+    static void my_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* param) {
+      DBG("GAP event handler");
+    }
 
 
     BLEManager() {}
@@ -65,12 +77,19 @@ class BLEManager
         return;
       }
       
+
+      BLEDevice::setCustomGattcHandler(my_gattc_event_handler);
+      BLEDevice::setCustomGattsHandler(my_gatts_event_handler);
+      BLEDevice::setCustomGapHandler(my_gap_event_handler);
+
       String bleName ="FlowConnect "+Config::instance->getDeviceName();
       BLEDevice::init(bleName.c_str());
 
       // Create the BLE Server
       pServer = BLEDevice::createServer();
       pServer->setCallbacks(new ServerCallback(this));
+
+
 
       // Create the BLE Service
       BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -82,6 +101,7 @@ class BLEManager
                           );
 
       pTxCharacteristic->addDescriptor(new BLE2902());
+      pTxCharacteristic->setCallbacks(new DataCallback());
 
       pRxCharacteristic = pService->createCharacteristic(
           CHARACTERISTIC_UUID_RX,
@@ -98,9 +118,31 @@ class BLEManager
       DBG("BLE is init with name "+bleName);
     }
 
+		void sendString(char* command) {
+      if (deviceConnected)  {
+				// DBG("Send command via BLE: " + command);
+        // Serial.printf("*** Sent Value: %d ***\n", 
+        //     txValue);
+         pTxCharacteristic->setValue(command); 
+         pTxCharacteristic->notify(); 
+         // txValue++; 
+      }
+		}
+
+		void sendBytes(void *bytePointer, size_t size, char messageType) {
+      if (deviceConnected)  {
+        uint8_t *bytes = new uint8_t[size+1];
+        bytes = (unsigned uint8_t*)bytePointer;
+        bytes[size] = messageType;
+        pTxCharacteristic->setValue(bytes, size+1); 
+        pTxCharacteristic->notify(); 
+      }
+		}
+
     void update()
     {
       if(!isActivated) return;
+
       
       if (!deviceConnected && oldDeviceConnected) {
         delay(500); // give the bluetooth stack the chance to get things ready
@@ -115,3 +157,5 @@ class BLEManager
       }
     }
 };
+
+

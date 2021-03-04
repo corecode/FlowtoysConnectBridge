@@ -15,22 +15,19 @@ class LedManager
 public:
     CRGB leds[NUM_LEDS];
 
-    void init()
-    {
+    void init() {
       LEDS.addLeds<APA102, DATA_PIN, CLOCK_PIN, BGR>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
       LEDS.setBrightness(20);
       FastLED.showColor(CRGB::Orange);
     }
 
-    void setLed(int id, CRGB color, bool show = true)
-    {
+    void setLed(int id, CRGB color, bool show = true) {
       if (id < 0 || id >= NUM_LEDS) return;
       leds[id] = color;
       if(show) LEDS.show();
     }
 
-    void setAll(CRGB color)
-    {
+    void setAll(CRGB color) {
       for (int i = 0; i < NUM_LEDS; i++) leds[i] = color;
       LEDS.show();
     }

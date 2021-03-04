@@ -1,4 +1,4 @@
-//#define VERSION 1
+  //#define VERSION 1
 #define VERSION 2
 
 
@@ -18,7 +18,7 @@ Config conf;
 #define USE_WIFI 1
 #if USE_WIFI
   #define USE_OSC 1
-  #define USE_STREAMING 1
+  #define USE_STREAMING 0
 #endif
 
 #define USE_BUTTONS 1
@@ -103,9 +103,15 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
   switch (data.type)
   {
 #if USE_RF
-    case CommandProvider::CommandType::GROUP_ADDED:
+    case CommandProvider::CommandType::GROUP_ADDED: break;
+    case CommandProvider::CommandType::WIFI_CHANGE:
+    break;
     case CommandProvider::CommandType::RF_DATA:
+
       timeAtLastRFReceived = millis() / 1000.0f;
+			DBG("GOT RF COMMAND, SENDING STRING NOW:");
+      print_bytes(data.value1.syncPacket, sizeof(SyncPacket));
+			bleManager.sendBytes(data.value1.syncPacket, sizeof(SyncPacket), 'p');
       break;
 
     case CommandProvider::CommandType::SYNC_RF:
@@ -135,7 +141,7 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
       {
         DBG("Set Wifi credentials : " + String(data.value1.stringValue) + ":" + String(data.value2.stringValue));
         conf.setWifiSSID(data.value1.stringValue);
-        conf.setWifiPassword(data.value2.stringValue);
+        conf.setWifiPassword(data.value1.stringValue, data.value2.stringValue);
         wifiManager.init();
       }
       break;
@@ -191,7 +197,7 @@ void handlePress(int id, bool value)
 
 void handleShortPress(int id)
 {
-  DBG("Short press " + String(id));
+  DBG("Short press " + String(id)); 
 }
 
 void handleLongPress(int id)
@@ -215,6 +221,8 @@ void handleMultiPress(int id, int count)
 #if USE_RF
 void rfDataCallback()
 {
+
+	// serialManager.sendCommand();
 
   //DBG("RF Data callback");
   /*
@@ -274,18 +282,15 @@ void updateLeds()
     float rp = max(1 - (curTime - timeAtLastRFReceived) / .3f, 0.f);
     c1 = blend(CRGB::Blue, CRGB::Orange, (int)(rp * 255));
     c2 = c1;
-  } else
-  {
-    if (wifiManager.isConnecting)  c1 = CRGB::Yellow;
-    else if (wifiManager.isConnected)
-    {
+  } else {
+    if (wifiManager.isConnecting) c1 = CRGB::Yellow;
+    else if (wifiManager.isConnected) {
       if (wifiManager.isLocal) c1 = CRGB::Purple;
       else c1 = CRGB::Green;
     }
 
 #if USE_BLE
-    if (bleManager.isActivated)
-    {
+    if (bleManager.isActivated) {
       if (bleManager.deviceConnected) c2 = CRGB::Green;
       else c2 = CRGB::Yellow;
     }
@@ -325,8 +330,13 @@ void setup()
 
 #if USE_BUTTONS
   btManager.init();
-  if (digitalRead(btManager.buttonPins[0]))
-  {
+  if (digitalRead(btManager.buttonPins[0])) {
+
+
+#if USE_LEDS
+    ledManager.init();
+    ledManager.setAll(CRGB::Black);
+#endif
     DBG("Button not pressed, sleep.");
     sleepESP(false);
     return;

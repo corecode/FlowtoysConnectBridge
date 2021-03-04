@@ -41,16 +41,20 @@ public:
   void update() {
     int size = Udp.parsePacket();
     if (size > 0) {
+      DBG("Size of message: " + String(size));
       OSCMessage msg;
       while (size--) {
         msg.fill(Udp.read());
       }
+      DBG("BYTES:");
+      print_bytes(msg);
+      DBG("BYTES ===============");
 
       
-      if (!msg.hasError()) 
-      {     
-        if(msg.fullMatch("/wakeUp"))
-        {
+      if (!msg.hasError()) {
+        DBG("Received message: NO ERROR");
+        DBG("Pattern: ${msg.getAddressPattern().toString()}");
+        if(msg.fullMatch("/wakeUp")) {
            CommandData d;
             d.type = WAKEUP;
             msg.getString(0,d.value1.stringValue);
@@ -58,8 +62,7 @@ public:
            d.value1.intValue = msg.size() > 0 ? msg.getInt(0) : 0; //group
            d.value2.intValue = msg.size() > 1 ? msg.getInt(1) : 0; //isPublic
            sendCommand(d);
-        }else if(msg.fullMatch("/powerOff"))
-        {
+        } else if (msg.fullMatch("/powerOff")) {
             CommandData d;
             d.type = POWEROFF;
             msg.getString(0,d.value1.stringValue);
@@ -67,21 +70,16 @@ public:
            d.value1.intValue = msg.size() > 0 ? msg.getInt(0) : 0; //group
            d.value2.intValue = msg.size() > 1 ? msg.getInt(1) : 0; //isPublic
            sendCommand(d);
-        }else if(msg.fullMatch("/sync"))
-        {
+        } else if (msg.fullMatch("/sync")) {
             CommandData d;
             d.type = SYNC_RF;
             d.value1.floatValue =  msg.size() > 0 ? msg.getFloat(0) : 0;
            sendCommand(d);
-        }else if(msg.fullMatch("/stopSync"))
-        {
+        } else if (msg.fullMatch("/stopSync")) {
            sendCommand(STOP_SYNC);
-        }else if(msg.fullMatch("/resetSync"))
-        {
+        } else if (msg.fullMatch("/resetSync")) {
           sendCommand(RESET_SYNC);
-        }
-        else if(msg.fullMatch("/pattern"))
-        {
+        } else if (msg.fullMatch("/pattern")) {
           PatternData p;
           
           p.groupID = msg.getInt(0);
@@ -104,37 +102,37 @@ public:
 
          // DBG("RECEIVED PATTERN:" + String(msg.address));
           sendPattern(p);
-        } else if(msg.fullMatch("/wifiSettings"))
-        {
+        } else if(msg.fullMatch("/wifiSettings")) {
+          DBG("RECEIVED WIFI CREDENTILAS; ");
            CommandData d;
             d.type = SET_WIFI_CREDENTIALS;
-            msg.getString(0,d.value1.stringValue);
-            msg.getString(1,d.value2.stringValue);
+            DBG("RECEIVED WIFI CREDENTILAS; 111");
+            char * str;
+            // DBG("RECEIVED WIFI CREDENTILAS; " + String(msg.getString(0)));
+            msg.getString(4,str);
+            DBG("RECEIVED WIFI CREDENTILAS; 222 ");
+            DBG("RECEIVED WIFI CREDENTILAS; 222 " + String(str));
+            // msg.getString(1,d.value2.stringValue);
+            DBG("RECEIVED WIFI CREDENTILAS; 333");
             sendCommand(d);
-        }else if(msg.fullMatch("/globalConfig"))
-        {
+        } else if(msg.fullMatch("/globalConfig")) {
             CommandData d;
             d.type = SET_GLOBAL_CONFIG;
             msg.getString(0, d.value1.stringValue);
             d.value2.intValue = msg.size() > 1?msg.getInt(1):2; //0 is wifi, 1 is BLE, 2 is both
             sendCommand(d);
-        }else if(msg.fullMatch("/play"))
-        {
+        } else if(msg.fullMatch("/play")) {
            CommandData d;
             d.type = PLAY_SHOW;
             msg.getString(0,d.value1.stringValue);
             sendCommand(d);
-        }else if(msg.fullMatch("/stop"))
-        {
+        } else if(msg.fullMatch("/stop")) {
            sendCommand(STOP_SHOW);
-        }else if(msg.fullMatch("/pause"))
-        {
+        } else if(msg.fullMatch("/pause")) {
            sendCommand(PAUSE_SHOW);
-        }else if(msg.fullMatch("/resume"))
-        {
+        } else if(msg.fullMatch("/resume")) {
            sendCommand(RESUME_SHOW);
-        }else if(msg.fullMatch("/seek"))
-        {
+        } else if(msg.fullMatch("/seek")) {
            CommandData d;
             d.type = SEEK_SHOW;
             d.value1.floatValue = msg.getFloat(0);
@@ -220,12 +218,11 @@ public:
         }*/
 
         #if USE_STREAMING
-        }else if(msg.fullMatch("/rgb/brightness"))
-        {
+        } else if(msg.fullMatch("/rgb/brightness")) {
           globalBrightness = msg.getFloat(0);
        #endif
        
-       }else{
+       } else {
           char addr[32];
           msg.getAddress(addr, 0);
           DBG("OSC Address not handled : "+String(addr));

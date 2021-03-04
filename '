@@ -40,16 +40,13 @@ public:
   bool getBLEMode() { int mode = preferences.getInt("wifiBLEMode",2); return mode == BLE_ONLY || mode == BOTH; }
   void setWifiBLEMode(int mode) { preferences.putInt("wifiBLEMode", mode); }
  
-  String getMostRecentWifiSSID() { return preferences.getString("ssid",""); }
+  String getWifiSSID() { return preferences.getString("ssid","flowspace"); }
   void setWifiSSID(String ssid) { preferences.putString("ssid",ssid); }
   
-  void setWifiPassword(String ssid, String pass) { preferences.putString(String("PASS:"+ssid).c_str(), pass); }
-  String getWifiPassword(String ssid) {
-		Serial.println("GET WIFI NETWORK FOR " + ssid);
-		return preferences.getString(String("PASS:"+ssid).c_str(), "");
-	}
+  void setWifiPassword(char* ssid, char* pass) { preferences.putString(strcat("PASS:", ssid), pass); }
+  String getWifiPassword(String ssid) { return preferences.getString(strcat("PASS:", ssid.c_str()), String()); }
   // String getWifiPassword() { return preferences.getString("pass","flowarts"); }
-  // void setWifiPassword(String pass) { preferences.putString("pass", pass); }
+  void setWifiPassword(String pass) { preferences.putString("pass", pass); }
 
   int getButtonStateVal(int id) { return preferences.getInt(String("buttonValue"+String(id)).c_str(),0); }
   void setButtonStateVal(int id, int val) { preferences.putInt(String("buttonValue"+String(id)).c_str(), val); }

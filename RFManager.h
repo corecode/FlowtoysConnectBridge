@@ -7,6 +7,7 @@
 #include "Config.h"
 #include "SerialManager.h"
 #include "RFGroup.h"
+#include "utils.h"
 #include <FastLED.h>
 
 /*
@@ -139,22 +140,27 @@ class RFManager :
     }
 
 
-    void setPattern(CommandProvider::PatternData data)
-    {
-      if(data.groupID == 0)
-      {
+    void setPattern(CommandProvider::PatternData data) {
+      if(data.groupID == 0) {
         for(int i=0;i<NUM_PUBLIC_GROUPS;i++) publicGroups[i].setData(data);
         for(int i=0;i<numActivePrivateGroups;i++) privateGroups[i].setData(data);
-      }else
-      {
-        int index = data.groupID - 1;
-        if (data.groupIsPublic) //public groups
-        {
-          if(index >= 0 && NUM_PUBLIC_GROUPS) publicGroups[index].setData(data);
-        } else
-        {
-          if(index >= 0 && numActivePrivateGroups) privateGroups[index].setData(data);
+      } else {
+        DBG("GROUP ID IS NOT 0, going to send directly to group: " + String(data.groupID));
+        for(int i=0;i<numActivePrivateGroups;i++) {
+          DBG("private group: " + String(privateGroups[i].groupID));
+          if (privateGroups[i].groupID == data.groupID)
+            privateGroups[i].setData(data);
         }
+
+
+        // int index = data.groupID - 1;
+        // if (data.groupIsPublic) //public groups
+        // {
+        //   if(index >= 0 && NUM_PUBLIC_GROUPS) publicGroups[index].setData(data);
+        // } else
+        // {
+        //   if(index >= 0 && numActivePrivateGroups) privateGroups[index].setData(data);
+        // }
       }
     }
 
@@ -194,92 +200,79 @@ class RFManager :
       }
     }
 
-    uint32_t padding;
-    
-    //SEND / RECEIVE
     bool receivePacket() {
-
-      if ( radio.available()) {
-
+      if (radio.available()) {
         while (radio.available()) {
           radio.read(&receivingPacket, sizeof(SyncPacket));
 
-          if (padding != receivingPacket.padding) {
-            DBG("PACKET RECEIVE!!!!!? adjust_active: " + String(receivingPacket.adjust_active) + " poweroff: " + String(receivingPacket.poweroff) + " force_reload: " + String(receivingPacket.force_reload) + " alternate: " + String(receivingPacket.alternate) + " LFO[0]: " + String(receivingPacket.lfo[0]) + " LFO[1]: " + String(receivingPacket.lfo[1]) + " LFO[2]: " + String(receivingPacket.lfo[2]) + " LFO[3]: " + String(receivingPacket.lfo[3]));
-            padding = receivingPacket.padding;
-            print_bytes(&receivingPacket, sizeof(receivingPacket));
-          }
-
-
           //reverse group bytes because address is reversed in rf packet but we read end of address as data to get groupID
-          
           receivingPacket.groupID = (receivingPacket.groupID >> 8 & 0xff) | ((receivingPacket.groupID & 0xff) << 8);
           
-          if (receivingPacket.groupID >= PUBLIC_GROUP_START_ID && receivingPacket.groupID < PUBLIC_GROUP_START_ID + NUM_PUBLIC_GROUPS)
-          {
-            if(publicGroups[receivingPacket.groupID - PUBLIC_GROUP_START_ID].updateFromPacket(receivingPacket))
-            {
-               sendCommand(RF_DATA);
-            }
-          }else
-          {
-            bool found = false;
-            for(int i=0;i<numActivePrivateGroups;i++)
-            {
-              if(receivingPacket.groupID == privateGroups[i].groupID)
-              {
-                bool newPadding = privateGroups[i].updateFromPacket(receivingPacket);
-                if(newPadding) sendCommand(RF_DATA);
-                found = true;
-                break;
-              }
+          // if (receivingPacket.groupID >= PUBLIC_GROUP_START_ID && receivingPacket.groupID < PUBLIC_GROUP_START_ID + NUM_PUBLIC_GROUPS) {
+          //   if(publicGroups[receivingPacket.groupID - PUBLIC_GROUP_START_ID].updateFromPacket(receivingPacket)) {
+          //      // sendCommand(RF_DATA);
+          //   }
+          // } else {
+          bool found = false;
+          bool didUpdate = false;
+          for(int i=0; i < numActivePrivateGroups; i++)
+            if(receivingPacket.groupID == privateGroups[i].groupID) {
+              DBG("=== Trying to update packet: ");
+              DBG("=== Trying to update packet: " + String(privateGroups[i].packet.padding) + " =?= " + String(receivingPacket.padding));
+              didUpdate = privateGroups[i].updateFromPacket(receivingPacket);
+              found = true;
+              break;
             }
 
-            if(!found)
-            {
-              if(syncing)
-              {
-                bool syncingPage = 1; //page 2
-                bool syncingMode = 0; //mode 1
-                bool acceptAll = false;
-                if(acceptAll || (receivingPacket.page == syncingPage && receivingPacket.mode == syncingMode))
-                {
-                   if(numActivePrivateGroups < MAX_PRIVATE_GROUPS) 
-                    {
-                      DBG("Adding group : "+String(receivingPacket.groupID)+" at index "+String(numActivePrivateGroups));
-                      digitalWrite(13,HIGH);
-                      delay(50);
-                      digitalWrite(13,LOW);
-                      privateGroups[numActivePrivateGroups].setup(receivingPacket.groupID, &radio);
-                      privateGroups[numActivePrivateGroups].updateFromPacket(receivingPacket);
-                      Config::instance->setRFNetworkId(numActivePrivateGroups, receivingPacket.groupID);
+          if(!found) createNewGroup(); 
 
-											CommandData groupAdded;
-											groupAdded.type = GROUP_ADDED;
-											groupAdded.value1.intValue = receivingPacket.groupID;
-											sendCommand(groupAdded);
-
-                      numActivePrivateGroups++;
-                   }else
-                   {
-                      DBG("Max groups reached");
-                   }
-                }
-               
-              }else if(!syncing)
-              {
-                //DBG("Packet from unknown group received "+String(receivingPacket.groupID));
-              }
-            }
+          if (didUpdate) {
+            DBG("=== DID UPDATE! " + String(receivingPacket.padding));
+            print_bytes(&receivingPacket, sizeof(receivingPacket));
+            CommandData rfData;
+            rfData.type = RF_DATA;
+            rfData.value1.syncPacket = &receivingPacket;
+            sendCommand(rfData);
           }
 
-          onRFData();
         }
+
+        onRFData();
+        // }
 
         return true;
       }
 
       return false;
+    }
+
+    void createNewGroup() {
+        // if(syncing) {
+        bool syncingPage = 1; //page 2
+        bool syncingMode = 0; //mode 1
+        bool acceptAll = true;
+        if(acceptAll || (receivingPacket.page == syncingPage && receivingPacket.mode == syncingMode)) {
+           if(numActivePrivateGroups < MAX_PRIVATE_GROUPS) {
+              digitalWrite(13,HIGH);
+              delay(50);
+              digitalWrite(13,LOW);
+              privateGroups[numActivePrivateGroups].setup(receivingPacket.groupID, &radio);
+              privateGroups[numActivePrivateGroups].updateFromPacket(receivingPacket);
+              Config::instance->setRFNetworkId(numActivePrivateGroups, receivingPacket.groupID);
+
+              CommandData groupAdded;
+              groupAdded.type = GROUP_ADDED;
+              sendCommand(groupAdded);
+
+              numActivePrivateGroups++;
+           } else {
+              DBG("Max groups reached");
+           }
+        }
+       
+      if(!syncing) {
+        //DBG("Packet from unknown group received "+String(receivingPacket.groupID));
+      }
     }
 
     void syncRF(float timeout = 0)

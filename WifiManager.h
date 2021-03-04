@@ -22,6 +22,7 @@ public:
   bool isLocal = false;
   bool isConnected = false;
   bool isConnecting = false;
+  bool hasScannedForNetworks = false;
   
   String ssid;
   String pass;
@@ -48,42 +49,44 @@ public:
       return;
     }
 
-    ssid = Config::instance->getWifiSSID();
-    pass = Config::instance->getWifiPassword();
-
-    
-    DBG("Connecting to Wifi "+ssid+" with password "+pass+"...");
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid.c_str(), pass.c_str());
-    WiFi.setSleep(false);
-
-    
-    timeAtStartConnect = millis();
-    timeAtLastConnect = millis();
-    
-    isLocal = false;
-    isConnecting = true;
-    setConnected(false);
     
     digitalWrite(13, HIGH);
   }
+
+  void attemptToConnect(String ssid) {
+    String password = Config::instance->getWifiPassword(ssid);
+
+    if (password.length() > 0) {
+      DBG("Connecting to Wifi "+ssid+" with password "+pass);
+      if (isConnecting)
+        networksToTryLater.push_back(ssid);
+      else {
+        isLocal = false;
+        isConnecting = true;
+        setConnected(false);
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(ssid.c_str(), password.c_str());
+        timeAtStartConnect = millis();
+        timeAtLastConnect = millis();
+      }
+    }
+  }
+
+  std::vector<String> networksToTryLater;
 
   void update()
   {
     if(!isActivated) return;
     if(isLocal || isConnected) return;
 
-    if(millis() > timeAtLastConnect + CONNECT_TRYTIME)
-    {      
-      if(WiFi.status() == WL_CONNECTED)
-      {  
+		// DBG("Not connected to wifi yet...");
+    if(millis() > timeAtLastConnect + CONNECT_TRYTIME) {      
+      if(WiFi.status() == WL_CONNECTED) {  
          digitalWrite(13, LOW);
 
-         DBG("WiFi Connected, local IP : "+String(WiFi.localIP()[0])+
-    "."+String(WiFi.localIP()[1])+
-    "."+String(WiFi.localIP()[2])+
-    "."+String(WiFi.localIP()[3]));
+				DBG("Grabbing local IP address:");
+				String localIp = WiFi.localIP().toString();
+        DBG("WiFi Connected, local IP : "+localIp);
 
         isLocal = false;
         isConnecting = false;
@@ -92,11 +95,29 @@ public:
          return;
       }
       timeAtLastConnect = millis();
+
+      if (networksToTryLater.size() > 0) {
+        std::vector<String> networksToTry = networksToTryLater;
+        networksToTryLater = {};
+        for (int i = 0; i < networksToTry.size(); ++i)
+          attemptToConnect(networksToTry[i]);
+      } else if (!hasScannedForNetworks) {
+        attemptToConnect(Config::instance->getMostRecentWifiSSID());
+
+        int foundNetworks = WiFi.scanNetworks();
+        hasScannedForNetworks = true;
+        if (foundNetworks > 0) {
+          Serial.print(foundNetworks);
+          Serial.println(" networks found");
+          for (int i = 0; i < foundNetworks; ++i)
+            attemptToConnect(WiFi.SSID(i));
+        }
+      }
     }
         
     if(millis() > timeAtStartConnect + CONNECT_TIMEOUT)
     {
-      DBG("Could not connect to "+ssid);
+      // DBG("Could not connect to "+ssid);
       setConnected(false);
       for(int i=0;i<5;i++)
       {
