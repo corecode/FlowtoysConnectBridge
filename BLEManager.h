@@ -82,7 +82,7 @@ class BLEManager
       BLEDevice::setCustomGattsHandler(my_gatts_event_handler);
       BLEDevice::setCustomGapHandler(my_gap_event_handler);
 
-      String bleName ="FlowConnect "+Config::instance->getDeviceName();
+      String bleName = Config::instance->getDeviceName();
       BLEDevice::init(bleName.c_str());
 
       // Create the BLE Server

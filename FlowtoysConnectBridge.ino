@@ -83,9 +83,8 @@ float timeAtLastBLEReceived;
 float timeAtLastOSCReceived;
 float timeAtLastRFReceived;
 
-void patternCallback(String providerId, CommandProvider::PatternData data)
-{
-  DBG("Set pattern ! " + String(data.page) + ":" + String(data.mode) + " / "+ String(data.actives));
+void patternCallback(String providerId, CommandProvider::PatternData data) {
+  DBG("Set pattern (group: " + String(data.groupID) + ") ! " + String(data.page) + ":" + String(data.mode) + " / "+ String(data.actives));
 
   if (providerId == "OSC") timeAtLastOSCReceived = millis() / 1000.0f;
   else timeAtLastBLEReceived = millis() / 1000.0f;
@@ -112,6 +111,8 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
 			DBG("GOT RF COMMAND, SENDING STRING NOW:");
       print_bytes(data.value1.syncPacket, sizeof(SyncPacket));
 			bleManager.sendBytes(data.value1.syncPacket, sizeof(SyncPacket), 'p');
+			oscManager.sendMessage("/sync-packet", data.value1.syncPacket, sizeof(SyncPacket));
+      DBG("...... after SendMessage?");
       break;
 
     case CommandProvider::CommandType::SYNC_RF:
@@ -143,6 +144,7 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
         conf.setWifiSSID(data.value1.stringValue);
         conf.setWifiPassword(data.value1.stringValue, data.value2.stringValue);
         wifiManager.init();
+        wifiManager.attemptToConnect(data.value1.stringValue);
       }
       break;
 #endif
@@ -150,8 +152,9 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
     case CommandProvider::CommandType::SET_GLOBAL_CONFIG:
       {
         String deviceName = String(data.value1.stringValue).equals("*") ? "" : data.value1.stringValue;
+        DBG("Received device name: " + deviceName);
         conf.setDeviceName(deviceName);
-        conf.setWifiBLEMode(data.value2.intValue);
+        /* conf.setWifiBLEMode(data.value2.intValue); */
 
         DBG("Set Device name : " + conf.getDeviceName() + " and mode wifi : " + String(conf.getWifiMode()) + ", BLE : " + String(conf.getBLEMode()));
         FastLED.delay(500);
@@ -285,8 +288,7 @@ void updateLeds()
   } else {
     if (wifiManager.isConnecting) c1 = CRGB::Yellow;
     else if (wifiManager.isConnected) {
-      if (wifiManager.isLocal) c1 = CRGB::Purple;
-      else c1 = CRGB::Green;
+      c1 = CRGB::Purple;
     }
 
 #if USE_BLE

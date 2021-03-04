@@ -217,8 +217,6 @@ class RFManager :
           bool didUpdate = false;
           for(int i=0; i < numActivePrivateGroups; i++)
             if(receivingPacket.groupID == privateGroups[i].groupID) {
-              DBG("=== Trying to update packet: ");
-              DBG("=== Trying to update packet: " + String(privateGroups[i].packet.padding) + " =?= " + String(receivingPacket.padding));
               didUpdate = privateGroups[i].updateFromPacket(receivingPacket);
               found = true;
               break;

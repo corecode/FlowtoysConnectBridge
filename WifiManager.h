@@ -19,7 +19,7 @@ public:
   
   ~WifiManager(){}
 
-  bool isLocal = false;
+  bool broadcastingLocal = false;
   bool isConnected = false;
   bool isConnecting = false;
   bool hasScannedForNetworks = false;
@@ -34,7 +34,7 @@ public:
   
   void init()
   {
-    isActivated = Config::instance->getWifiMode();
+    isActivated = true; //Config::instance->getWifiMode();
 
     if(isConnected)
     {
@@ -61,7 +61,7 @@ public:
       if (isConnecting)
         networksToTryLater.push_back(ssid);
       else {
-        isLocal = false;
+        broadcastingLocal = false;
         isConnecting = true;
         setConnected(false);
         WiFi.mode(WIFI_STA);
@@ -74,12 +74,16 @@ public:
 
   std::vector<String> networksToTryLater;
 
-  void update()
-  {
+  void update() {
     if(!isActivated) return;
-    if(isLocal || isConnected) return;
+    if (!broadcastingLocal) setupLocal();
 
-		// DBG("Not connected to wifi yet...");
+    if(!isConnected)
+      connectToNetwork();
+  }
+
+  void connectToNetwork() {
+		DBG("CONNECTING TO WIFI");
     if(millis() > timeAtLastConnect + CONNECT_TRYTIME) {      
       if(WiFi.status() == WL_CONNECTED) {  
          digitalWrite(13, LOW);
@@ -88,7 +92,7 @@ public:
 				String localIp = WiFi.localIP().toString();
         DBG("WiFi Connected, local IP : "+localIp);
 
-        isLocal = false;
+        // broadcastingLocal = false;
         isConnecting = false;
         setConnected(true);
     
@@ -131,9 +135,8 @@ public:
     }
   }
 
-  void setupLocal()
-  {
-    String softAPName = "FlowConnect "+Config::instance->getDeviceName();
+  void setupLocal() {
+    String softAPName = Config::instance->getDeviceName();
     String softAPPass = "findyourflow";
     WiFi.softAP(softAPName.c_str(), softAPPass.c_str());
     Serial.println("Local IP : "+String(WiFi.softAPIP()[0])+
@@ -141,15 +144,13 @@ public:
     "."+String(WiFi.softAPIP()[2])+
     "."+String(WiFi.softAPIP()[3]));
 
-    isLocal = true;
-    isConnecting = false;
-    setConnected(true);
+    broadcastingLocal = true;
+    onConnectionUpdate();
     
     DBG("AP WiFi is init with name "+softAPName+" , pass : "+softAPPass);
   }
 
-  void setConnected(bool value)
-  {
+  void setConnected(bool value) {
     isConnected = value;
     onConnectionUpdate();
   }
