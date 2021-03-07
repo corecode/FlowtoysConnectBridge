@@ -1,5 +1,7 @@
 #pragma once
 #include "Preferences.h"
+#include<math.h>  
+
 
 class Config
 {
@@ -33,7 +35,7 @@ public:
   int getNumPrivateGroups() { return preferences.getInt("numGroups", 0); }
   void setNumPrivateGroups(int num) { preferences.putInt("numGroups", num); }
 
-  String getDeviceName() { return preferences.getString("deviceName", "FlowConnect " + String((int)ESP.getEfuseMac()).substring(0,10)); }
+  String getDeviceName() { return preferences.getString("deviceName", "FlowConnect " + String(abs((int)ESP.getEfuseMac())).substring(0,10)); }
   void setDeviceName(String deviceName) { preferences.putString("deviceName", deviceName); }
 
   bool getWifiMode() { int mode = preferences.getInt("wifiBLEMode",2); return mode == WIFI_ONLY || mode == BOTH; } //0 is wifi only, 1 is BLE only, 2 is both

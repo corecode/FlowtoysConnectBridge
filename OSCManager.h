@@ -21,10 +21,10 @@ public:
   void init() { 
 
     DBG("Init OSC");
-    
+
     Udp.stop();
     Udp.begin(localPort);
-    
+
     String deviceName = Config::instance->getDeviceName();
     if (!MDNS.begin(deviceName.c_str())) {
     // if (!MDNS.begin("N FlowConnect")) {
@@ -96,8 +96,11 @@ public:
 
 
 
+    update2();
+  }
 
 
+  void update2() {
     int size = Udp.parsePacket();
     if (size > 0) {
       int originalSize = size;

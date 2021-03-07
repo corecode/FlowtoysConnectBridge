@@ -1,0 +1,6 @@
+#/bin/bash
+
+cd `dirname "$0"`
+# ./Arduino15/packages/esp32/tools/esptool_py/3.0.0/esptool --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xe000 ./Arduino15/packages/esp32/hardware/esp32/1.0.5/tools/partitions/boot_app0.bin 0x1000 ./Arduino15/packages/esp32/hardware/esp32/1.0.5/tools/sdk/bin/bootloader_dio_80m.bin 0x10000 ./bridge.bin
+./bin/esptool --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0xe000 ./bin/boot_app0.bin 0x1000 ./bin/bootloader_dio_80m.bin 0x10000 ./bin/bridge.bin
+

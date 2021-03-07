@@ -15,7 +15,7 @@ class BLEManager
 
     class ServerCallback: public BLEServerCallbacks {
       public:
-        ServerCallback(BLEManager * manager) : manager(manager) {}
+        ServerCallback(BLEManager * manager)   : manager(manager) {}
         BLEManager * manager;
 
         void onConnect(BLEServer* pServer) {
@@ -157,5 +157,3 @@ class BLEManager
       }
     }
 };
-
-

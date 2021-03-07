@@ -3,12 +3,13 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <WiFiUdp.h>
+#include <math.h>  
 
 #include "Config.h"
 #include "SerialManager.h"
 
 #define CONNECT_TIMEOUT 5000
-#define CONNECT_TRYTIME 500
+#define CONNECT_TRYTIME 2000
 
 class WifiManager
 {
@@ -42,15 +43,23 @@ public:
       WiFi.disconnect();
       delay(100);
     }
-    
+
     if(!isActivated)
     {
       DBG("Wifi is not activated, not initializing");
       return;
     }
 
-    
+
     digitalWrite(13, HIGH);
+  }
+
+  void update() {
+    if(!isActivated) return;
+    if (!broadcastingLocal) setupLocal();
+
+    if(!isConnected)
+      connectToNetwork();
   }
 
   void attemptToConnect(String ssid) {
@@ -61,7 +70,6 @@ public:
       if (isConnecting)
         networksToTryLater.push_back(ssid);
       else {
-        broadcastingLocal = false;
         isConnecting = true;
         setConnected(false);
         WiFi.mode(WIFI_STA);
@@ -74,19 +82,25 @@ public:
 
   std::vector<String> networksToTryLater;
 
-  void update() {
-    if(!isActivated) return;
-    if (!broadcastingLocal) setupLocal();
-
-    if(!isConnected)
-      connectToNetwork();
-  }
+	const char* wl_status_to_string(wl_status_t status) {
+		switch (status) {
+			case WL_NO_SHIELD: return "[NO SHIELD]";
+			case WL_IDLE_STATUS: return "[IDLE STATUS]";
+			case WL_NO_SSID_AVAIL: return "[NO SSID AVAIL]";
+			case WL_SCAN_COMPLETED: return "[SCAN COMPLETED]";
+			case WL_CONNECTED: return "[CONNECTED]";
+			case WL_CONNECT_FAILED: return "[CONNECT FAILED]";
+			case WL_CONNECTION_LOST: return "[CONNECTION LOST]";
+			case WL_DISCONNECTED: return "[DISCONNECTED]";
+		}
+	}
 
   void connectToNetwork() {
-		DBG("CONNECTING TO WIFI");
-    if(millis() > timeAtLastConnect + CONNECT_TRYTIME) {      
+    if(millis() > timeAtLastConnect + CONNECT_TRYTIME) {
+      DBG("CONNECTING TO WIFI " + String(wl_status_to_string(WiFi.status())));
+      timeAtLastConnect = millis();
       if(WiFi.status() == WL_CONNECTED) {  
-         digitalWrite(13, LOW);
+       digitalWrite(13, LOW);
 
 				DBG("Grabbing local IP address:");
 				String localIp = WiFi.localIP().toString();
@@ -97,42 +111,47 @@ public:
         setConnected(true);
     
          return;
-      }
-      timeAtLastConnect = millis();
+      } else {
+        setConnected(false);
 
-      if (networksToTryLater.size() > 0) {
-        std::vector<String> networksToTry = networksToTryLater;
-        networksToTryLater = {};
-        for (int i = 0; i < networksToTry.size(); ++i)
-          attemptToConnect(networksToTry[i]);
-      } else if (!hasScannedForNetworks) {
-        attemptToConnect(Config::instance->getMostRecentWifiSSID());
+				if (networksToTryLater.size() > 0) {
+					std::vector<String> networksToTry = networksToTryLater;
+					networksToTryLater = {};
+					for (int i = 0; i < networksToTry.size(); ++i)
+						attemptToConnect(networksToTry[i]);
+				} else if (!hasScannedForNetworks) {
+					attemptToConnect(Config::instance->getMostRecentWifiSSID());
 
-        int foundNetworks = WiFi.scanNetworks();
-        hasScannedForNetworks = true;
-        if (foundNetworks > 0) {
-          Serial.print(foundNetworks);
-          Serial.println(" networks found");
-          for (int i = 0; i < foundNetworks; ++i)
-            attemptToConnect(WiFi.SSID(i));
-        }
-      }
+					int foundNetworks = WiFi.scanNetworks();
+					hasScannedForNetworks = true;
+					if (foundNetworks > 0) {
+						Serial.print(foundNetworks);
+						Serial.println(" networks found");
+						for (int i = 0; i < foundNetworks; ++i)
+							attemptToConnect(WiFi.SSID(i));
+					}
+				}
+			}
     }
         
-    if(millis() > timeAtStartConnect + CONNECT_TIMEOUT)
-    {
-      // DBG("Could not connect to "+ssid);
-      setConnected(false);
-      for(int i=0;i<5;i++)
-      {
-        digitalWrite(13, HIGH);
-        delay(50);
-        digitalWrite(13, LOW);
-        delay(50);
-      }
-      
-      setupLocal();
-    }
+    // ????????? I don't know what this does,
+    //
+    // Maybe it tries to re-broadcast to wifi to keep it active?
+    // Do we need it?
+    //
+    // if(millis() > timeAtStartConnect + CONNECT_TIMEOUT) {
+    //   // DBG("Could not connect to "+ssid);
+    //   setConnected(false);
+    //   for(int i=0;i<5;i++) {
+    //     digitalWrite(13, HIGH);
+    //     delay(50);
+    //     digitalWrite(13, LOW);
+    //     delay(50);
+    //   }
+    // }
+    //   
+    //   // setupLocal();
+    // }
   }
 
   void setupLocal() {
