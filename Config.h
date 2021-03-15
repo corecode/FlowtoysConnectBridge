@@ -35,7 +35,9 @@ public:
   int getNumPrivateGroups() { return preferences.getInt("numGroups", 0); }
   void setNumPrivateGroups(int num) { preferences.putInt("numGroups", num); }
 
-  String getDeviceName() { return preferences.getString("deviceName", "FlowConnect " + String(abs((int)ESP.getEfuseMac())).substring(0,10)); }
+  String getDeviceName() {
+    return preferences.getString("deviceName", "FlowConnect " + String(abs((int)ESP.getEfuseMac())).substring(0,10));
+  }
   void setDeviceName(String deviceName) { preferences.putString("deviceName", deviceName); }
 
   bool getWifiMode() { int mode = preferences.getInt("wifiBLEMode",2); return mode == WIFI_ONLY || mode == BOTH; } //0 is wifi only, 1 is BLE only, 2 is both
@@ -53,8 +55,12 @@ public:
   // String getWifiPassword() { return preferences.getString("pass","flowarts"); }
   // void setWifiPassword(String pass) { preferences.putString("pass", pass); }
 
-  int getButtonStateVal(int id) { return preferences.getInt(String("buttonValue"+String(id)).c_str(),0); }
-  void setButtonStateVal(int id, int val) { preferences.putInt(String("buttonValue"+String(id)).c_str(), val); }
+  bool getAutoWake() { return preferences.getInt("autoWake") == 1; }
+  void setAutoWake(int b) { preferences.putInt("autoWake", b == true ? 1 : 0); }
+
+	void hardReset() {
+    preferences.clear();
+	}
 };
 
 Config * Config::instance = nullptr;

@@ -94,9 +94,11 @@ class SerialManager :
           
         case 'g':
           {
+            DBG("SET GLOBAL CONFIG");
             CommandData d;
             d.type = SET_GLOBAL_CONFIG;
             String split[2];
+            DBG("MESSAGE: " + String(message));
             int num = splitString(&message[1], split, 2);
             if(num > 0) d.value1.stringValue = (char *)split[0].c_str();
             d.value2.intValue = num > 1?split[1].toInt():2;
@@ -122,6 +124,11 @@ class SerialManager :
 
         case 'r':
         {
+          ESP.restart();
+        }
+        break;
+        case 'R': {
+          conf.hardReset();
           ESP.restart();
         }
         break;
@@ -151,6 +158,8 @@ class SerialManager :
             if(num > 10) p.lfo2 = split[10].toInt();
             if(num > 11) p.lfo3 = split[11].toInt();
             if(num > 12) p.lfo4 = split[12].toInt();
+            if(num > 13) p.adjust_active = split[13].toInt() & 1;
+         print_bytes(&p, sizeof(PatternData));
 
             sendPattern(p);
           }

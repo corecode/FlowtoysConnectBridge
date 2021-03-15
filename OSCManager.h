@@ -45,7 +45,6 @@ public:
   void sendMessage(char * path, void *bytePointer, size_t size) {
     DBG("REMOTE IP: " + String(remoteIp));
     if (!remoteIp) return;
-    DBG("...... here?");
     OSCMessage msg(path);
 
     uint8_t *bytes = new uint8_t[size+1];
@@ -53,8 +52,6 @@ public:
     for (int i = 0; i<size; i++)
       msg.add(bytes[i]);
 
-    DBG("Message prepared!");
-    DBG("Message prepared!" + String(msg.size()));
     for (int i = 0; i < msg.size(); ++i) {
       // if (msg.isString(i)) {
         char str[255];
@@ -71,7 +68,7 @@ public:
   }
   
   void update() {
-		// int packetSize = Udp.parsePacket();
+		int packetSize = Udp.parsePacket();
     //
 		// if (packetSize) {
 		// 	Serial.print("Received packet of size ");
@@ -96,7 +93,7 @@ public:
 
 
 
-    update2();
+    // update2();
   }
 
 
@@ -192,10 +189,15 @@ public:
           p.lfo2 = msg.getInt(11);
           p.lfo3 = msg.getInt(12);
           p.lfo4 = msg.getInt(13);
+          p.adjust_active = msg.getInt(14) & 1;
+          p.randomize_adjust = msg.getInt(14) & 64;
 
-         // DBG("RECEIVED PATTERN:" + String(p.page));
+         DBG("RECEIVED PATTERN with adjust: " + String(msg.getInt(14)) +" setting it to: " + String(p.adjust_active));
          // print_bytes(&p, sizeof(PatternData));
           sendPattern(p);
+        } else if(msg.fullMatch("/factory-reset")) {
+          conf.hardReset();
+          ESP.restart();
         } else if(msg.fullMatch("/wifiSettings")) {
           DBG("RECEIVED WIFI CREDENTILAS; ");
           CommandData d;

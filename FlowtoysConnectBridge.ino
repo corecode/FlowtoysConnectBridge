@@ -2,6 +2,7 @@
 #define VERSION 2
 
 
+#include "utils.h"
 #include "Config.h"
 Config conf;
 
@@ -158,6 +159,7 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
 
         DBG("Set Device name : " + conf.getDeviceName() + " and mode wifi : " + String(conf.getWifiMode()) + ", BLE : " + String(conf.getBLEMode()));
         FastLED.delay(500);
+        conf.setAutoWake(true);
         ESP.restart();
       }
       break;
@@ -234,7 +236,7 @@ void rfDataCallback()
     serialManager.sendIntValue("Page", rfManager.sync_pkt.page);
     serialManager.sendIntValue("Mode", rfManager.sync_pkt.mode);
     serialManager.sendIntValue("WakeUp", rfManager.sync_pkt.wakeup);
-    serialManager.sendIntValue("PowerOff", rfManager.sync_pkt.poweroff);
+    serialManager.sendIntValue("PowerOff", rfManager.sync_pkt.power_off);
     serialManager.sendIntValue("LFO-0", rfManager.sync_pkt.lfo[0]);
     serialManager.sendIntValue("LFO-1", rfManager.sync_pkt.lfo[1]);
     serialManager.sendIntValue("LFO-Active", rfManager.sync_pkt.lfo_active);
@@ -332,7 +334,7 @@ void setup()
 
 #if USE_BUTTONS
   btManager.init();
-  if (digitalRead(btManager.buttonPins[0])) {
+  if (digitalRead(btManager.buttonPins[0]) && !conf.getAutoWake()) {
 
 
 #if USE_LEDS
@@ -343,6 +345,9 @@ void setup()
     sleepESP(false);
     return;
   }
+
+  if (conf.getAutoWake())
+    conf.setAutoWake(false);
 #endif
 
 #if USE_LEDS

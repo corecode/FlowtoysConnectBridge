@@ -1,3 +1,4 @@
+#include <stdexcept>
 // template <typename Iterator>
 // std::string join(Iterator begin, Iterator end, char separator = '.')
 // {

@@ -20,9 +20,10 @@ struct SyncPacket {
   uint8_t reserved[2];
   uint8_t page;
   uint8_t mode;
+  uint8_t randomize_adjust : 1;
   uint8_t adjust_active : 1;
   uint8_t wakeup : 1;
-  uint8_t poweroff : 1;
+  uint8_t power_off : 1;
   uint8_t force_reload : 1;
   uint8_t save : 1;
   uint8_t _delete : 1;
@@ -52,11 +53,13 @@ class RFGroup
     int groupID = -1;
     SyncPacket packet;
     
-    void sendPacket(bool force = false)
-    {
+    void sendPacket(bool force = false) {
       if(groupID <= 0) return;
       if(dirtyCount == 0 && !force) return;
       
+      DBG("SENDING PACKET: " + String(force));
+      print_bytes(&packet, sizeof(SyncPacket));
+
       radio->write(&packet, sizeof(SyncPacket));
       
       if(!force) dirtyCount = max(dirtyCount -1, 0);
@@ -84,12 +87,10 @@ class RFGroup
         && packet.global_sat == data.saturation
         && packet.global_speed == data.speed
         && packet.global_density == data.density
-        )
-        {
+        ) {
           //DBG(String(groupID) +  " : same packet");
           return;
-        }else
-        {
+        }else {
         }
       }
 
@@ -99,14 +100,7 @@ class RFGroup
       packet.page = data.page;
       packet.mode = data.mode;
       packet.wakeup = false;
-      packet.poweroff = false;
-//
-//      packet.lfo_active = (data.actives >> 5) & 1;
-//      packet.hue_active = data.actives & 1;
-//      packet.sat_active = (data.actives >> 1) & 1;
-//      packet.val_active = (data.actives >> 2) & 1;
-//      packet.speed_active = (data.actives >> 3) & 1;
-//      packet.density_active = (data.actives >> 4) & 1;
+      packet.power_off = false;
 
 
       packet.lfo_active = data.actives & 1;//true;
@@ -115,6 +109,9 @@ class RFGroup
       packet.val_active = (data.actives >> 3) & 1;//true;
       packet.speed_active = (data.actives >> 4) & 1;//true;
       packet.density_active = (data.actives >> 5) & 1;//true;
+
+      packet.adjust_active = data.adjust_active;
+      packet.randomize_adjust = data.randomize_adjust;
 
       packet.lfo[0] = data.lfo1;
       packet.lfo[1] = data.lfo2;
@@ -138,6 +135,10 @@ class RFGroup
       if(receivingPacket.padding > packet.padding) {
          packet.padding = receivingPacket.padding;
          return true;
+      } else if (packet.power_off != receivingPacket.power_off) {
+        packet.power_off = receivingPacket.power_off;
+        packet.padding = 0;
+        return true;
       }
 
 
@@ -179,7 +180,7 @@ class RFGroup
      void powerOff()
      {
         packet.padding++;
-        packet.poweroff = true;
+        packet.power_off = true;
         dirtyCount = 10;
      }
 };

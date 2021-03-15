@@ -7,7 +7,6 @@
 #include "Config.h"
 #include "SerialManager.h"
 #include "RFGroup.h"
-#include "utils.h"
 #include <FastLED.h>
 
 /*
@@ -86,7 +85,7 @@ class RFManager :
       if (millis() > lastForceSendTime + FORCESEND_TIME)
       {
         lastForceSendTime = millis();
-        sendPackets(true);
+        // sendPackets(true);
       }
 
       if(syncing && syncTime > 0 && millis() > timeAtSync + syncTime)

@@ -62,6 +62,8 @@ public:
       uint8_t lfo2 = 0;
       uint8_t lfo3 = 0;
       uint8_t lfo4 = 0;
+      uint8_t adjust_active = 0;
+      uint8_t randomize_adjust = 0;
     };
 
     static PatternData getSolidColorPattern(CRGB color)

@@ -155,10 +155,11 @@ public:
   }
 
   void setupLocal() {
+    DBG("SETTING UP LOCAL WIFI NETWORK:");
     String softAPName = Config::instance->getDeviceName();
     String softAPPass = "findyourflow";
     WiFi.softAP(softAPName.c_str(), softAPPass.c_str());
-    Serial.println("Local IP : "+String(WiFi.softAPIP()[0])+
+    DBG("Local IP : "+String(WiFi.softAPIP()[0])+
     "."+String(WiFi.softAPIP()[1])+
     "."+String(WiFi.softAPIP()[2])+
     "."+String(WiFi.softAPIP()[3]));
@@ -166,7 +167,9 @@ public:
     broadcastingLocal = true;
     onConnectionUpdate();
     
-    DBG("AP WiFi is init with name "+softAPName+" , pass : "+softAPPass);
+    DBG("AP WiFi is init!!");
+    DBG("AP WiFi is init!! name:" + String(softAPName));
+    DBG("AP WiFi is init!! pass:" + String(softAPPass));
   }
 
   void setConnected(bool value) {
