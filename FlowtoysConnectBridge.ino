@@ -8,14 +8,13 @@ Config conf;
 #define USE_SERIAL 1
 #if USE_SERIAL
   #define SERIAL_DEBUG 1
-  #define USE_BLE 1
 #endif
 
-
+#define USE_BLE 1
 #define USE_RF 1
 
 
-#define USE_WIFI 1
+#define USE_WIFI 0
 #if USE_WIFI
   #define USE_OSC 1
   #define USE_STREAMING 1
@@ -29,12 +28,12 @@ Config conf;
 #if USE_SERIAL
 #include "SerialManager.h"
 SerialManager serialManager;
+#endif //SERIAL
 
 #if USE_BLE
 #include "BLEManager.h"
 BLEManager bleManager;
 #endif //BLE
-#endif //SERIAL
 
 
 #if USE_RF
@@ -89,10 +88,6 @@ void patternCallback(String providerId, CommandProvider::PatternData data)
 
   if (providerId == "OSC") timeAtLastOSCReceived = millis() / 1000.0f;
   else timeAtLastBLEReceived = millis() / 1000.0f;
-
-#if USE_RF
-  rfManager.setPattern(data);
-#endif
 }
 
 void commandCallback(String providerId, CommandProvider::CommandData data)
@@ -105,19 +100,7 @@ void commandCallback(String providerId, CommandProvider::CommandData data)
 #if USE_RF
     case CommandProvider::CommandType::GROUP_ADDED:
     case CommandProvider::CommandType::RF_DATA:
-      timeAtLastRFReceived = millis() / 1000.0f;
       break;
-
-    case CommandProvider::CommandType::SYNC_RF:
-      {
-        //rfManager.resetSync(); //tmp because app doesn't have button
-        rfManager.syncRF(data.value1.floatValue);
-      }
-      break;
-    case CommandProvider::CommandType::STOP_SYNC: rfManager.stopSync(); break;
-    case CommandProvider::CommandType::RESET_SYNC: rfManager.resetSync(); break;
-    case CommandProvider::CommandType::WAKEUP: rfManager.wakeUp(data.value1.intValue, data.value2.intValue); break;
-    case CommandProvider::CommandType::POWEROFF: rfManager.powerOff(data.value1.intValue, data.value2.intValue); break;
 #endif
 
 
@@ -213,8 +196,11 @@ void handleMultiPress(int id, int count)
 
 
 #if USE_RF
-void rfDataCallback()
+void rfDataCallback(const std::string& data)
 {
+	timeAtLastRFReceived = millis() / 1000.0f;
+
+	bleManager.sendRxData(data);
 
   //DBG("RF Data callback");
   /*
@@ -269,19 +255,15 @@ void updateLeds()
   CRGB c2 = CRGB::Black;
   CRGB c3 = CRGB::Black;
 
-  if (rfManager.syncing)
   {
-    float rp = max(1 - (curTime - timeAtLastRFReceived) / .3f, 0.f);
-    c1 = blend(CRGB::Blue, CRGB::Orange, (int)(rp * 255));
-    c2 = c1;
-  } else
-  {
+#if USE_WIFI
     if (wifiManager.isConnecting)  c1 = CRGB::Yellow;
     else if (wifiManager.isConnected)
     {
       if (wifiManager.isLocal) c1 = CRGB::Purple;
       else c1 = CRGB::Green;
     }
+#endif
 
 #if USE_BLE
     if (bleManager.isActivated)
@@ -323,18 +305,21 @@ void setup()
   serialManager.setPatternCallback(&patternCallback);
 #endif //SERIAL
 
+#if USE_LEDS
+  ledManager.init();
+#endif
+
 #if USE_BUTTONS
   btManager.init();
   if (digitalRead(btManager.buttonPins[0]))
   {
     DBG("Button not pressed, sleep.");
+		ledManager.setLed(0, CRGB(0,0,0), true);
+		ledManager.setLed(1, CRGB(0,0,0), true);
+		ledManager.setLed(2, CRGB(0,0,0), true);
     sleepESP(false);
     return;
   }
-#endif
-
-#if USE_LEDS
-  ledManager.init();
 #endif
 
 #if USE_RF
@@ -343,8 +328,13 @@ void setup()
   rfManager.setRFDataCallback(&rfDataCallback);
 #endif
 
-#if USE_BLE && USE_SERIAL
+#if USE_BLE
   bleManager.init();
+	bleManager.txCallback = [&](const std::string& v) {
+		timeAtLastBLEReceived = millis() / 1000.0f;
+		rfManager.queuePacket(v);
+	};
+	bleManager.ctrlCallback = [&](const std::string& v) { rfManager.control(v); };
 #endif //BLE
 
 
@@ -386,9 +376,9 @@ void loop()
 
 #if USE_SERIAL
   serialManager.update();
+#endif
 #if USE_BLE
   bleManager.update();
-#endif
 #endif
 
 #if USE_WIFI

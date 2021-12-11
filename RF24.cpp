@@ -10,6 +10,8 @@
 #include "RF24_config.h"
 #include "RF24.h"
 
+#pragma GCC diagnostic ignored "-Wformat"
+
 /****************************************************************************/
 
 void RF24::csn(bool mode)
@@ -990,6 +992,11 @@ void RF24::startWrite( const void* buf, uint8_t len, const bool multicast ){
 
 bool RF24::rxFifoFull(){
 	return read_register(FIFO_STATUS) & _BV(RX_FULL);
+}
+/****************************************************************************/
+
+bool RF24::txFifoFull(){
+	return get_status() & _BV(TX_FULL);
 }
 /****************************************************************************/
 

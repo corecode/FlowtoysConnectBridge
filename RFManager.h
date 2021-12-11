@@ -1,13 +1,13 @@
 #pragma once
 
+#include <map>
+
 #include <SPI.h>
 #include "nRF24L01.h"
 #include "RF24.h"
 
 #include "Config.h"
 #include "SerialManager.h"
-#include "RFGroup.h"
-#include <FastLED.h>
 
 /*
    GROUP IDS
@@ -18,82 +18,55 @@
   purple = 5
 */
 
-#define NUM_PUBLIC_GROUPS 5
-#define PUBLIC_GROUP_START_ID 1
-
-#define MAX_PRIVATE_GROUPS 100
-
-#define AUTOADD_PRIVATES 1
-
-#define SEND_TIME 30 //ms
-#define FORCESEND_TIME 1000
-
 class RFManager :
   public CommandProvider
 {
   public:
-    RFManager() : CommandProvider("RF"), radio(4, 33) {}
-    ~RFManager() {}
+    typedef struct {
+	uint8_t data[21];
+    } tx_payload_t;
+
+    typedef struct {
+	int8_t rssi;
+	uint8_t data[sizeof(tx_payload_t)];
+    } rx_payload_t;
+
+    static constexpr int TX_QUEUE_LEN = 16;
+    static constexpr int GROUP_SLOTS = 64;
+
+    RFManager()
+	: CommandProvider("RF")
+	, radio(4, 33)
+	, tx_queue{xQueueCreate(TX_QUEUE_LEN, sizeof(tx_payload_t))}
+    {}
+    virtual ~RFManager() {}
 
     RF24 radio; //CE and CS pins for SPI bus on NRF24+
-    RFGroup publicGroups[5];
-    RFGroup privateGroups[MAX_PRIVATE_GROUPS];
 
-    uint8_t address[5] = { 0x01, 0x07, 0xf1, 0, 0 };
-    SyncPacket receivingPacket;
+    uint8_t address[3] = { 0x01, 0x07, 0xf1 };
 
-    long lastSendTime = 0;
-    long lastForceSendTime = 0;
+    QueueHandle_t tx_queue;
 
-    int numActivePrivateGroups;
+    bool isListening = false;
+    tx_payload_t currentPacket;
+    int remainingRepeats = 0;
 
-    bool syncing;
-    long syncTime;
-    long timeAtSync;
-
-    bool radioIsConnected; //to implement
+    volatile bool doClearGroups = false;
+    std::map<uint16_t, rx_payload_t> groups = {};
 
 
     void init()
     {
-      syncing = false;
+	setRFDataCallback(&RFManager::onRFDataDefaultCallback);
+	setupRadio();
 
-      for (int i = 0; i < NUM_PUBLIC_GROUPS; i++) publicGroups[i].setup(PUBLIC_GROUP_START_ID + i, &radio);
-
-      numActivePrivateGroups = Config::instance->getNumPrivateGroups();
-
-      for (int i = 0; i <  numActivePrivateGroups; i++)
-      {
-        privateGroups[i].setup(Config::instance->getRFNetworkId(i), &radio);
-        DBG(" > Loading private group "+String(i+1)+" : "+String(privateGroups[i].groupID));
-      }
-
-      setRFDataCallback(&RFManager::onRFDataDefaultCallback);
-      setupRadio();
-
-      DBG("RF Manager is init.");
+	DBG("RF Manager is init.");
     }
 
     void update()
     {
-      if (millis() > lastSendTime + SEND_TIME)
-      {
-        lastSendTime = millis();
-        sendPackets();
-      }
-
-      if (millis() > lastForceSendTime + FORCESEND_TIME)
-      {
-        lastForceSendTime = millis();
-        sendPackets(true);
-      }
-
-      if(syncing && syncTime > 0 && millis() > timeAtSync + syncTime)
-      {
-        stopSync();
-      }
-
-      receivePacket();
+	sendNextPacket();
+	receivePackets();
     }
 
 
@@ -104,208 +77,99 @@ class RFManager :
       radio.setDataRate(RF24_250KBPS);
       radio.setChannel(2);
       radio.setAddressWidth(3);
-      radio.setPayloadSize(sizeof(SyncPacket));
+      radio.setPayloadSize(sizeof(tx_payload_t));
       radio.setCRCLength(RF24_CRC_16);
 
       radio.stopListening();
       radio.openReadingPipe(1, address);
       radio.openWritingPipe(address);
       radio.startListening();
+      isListening = true;
 
 #if SERIAL_DEBUG
       radio.printDetails();
-
 #endif
 
     }
 
-    void sendPackets(bool force = false)
-    {
-      radio.stopListening();
-      //for (int i = 0; i < NUM_PUBLIC_GROUPS; i++) publicGroups[i].sendPacket(force);
-      for (int i = 0; i < numActivePrivateGroups; i++) privateGroups[i].sendPacket(force);
-      radio.startListening();
+    void control(const std::string& data) {
+	doClearGroups = true;
     }
 
-
-    void setSolidColors(CRGB * colors)
-    {
-      for(int i=0;i < numActivePrivateGroups ;i++)
-      {
-        CommandProvider::PatternData data = CommandProvider::getSolidColorPattern(colors[i]);
-        data.brightness *= globalBrightness;
-        privateGroups[i].setData(data, true);
-      }
+    void queuePacket(const std::string& data) {
+	log_v("queuing packet");
+	xQueueSendToBack(tx_queue, data.data(), 0);
     }
 
-
-    void setPattern(CommandProvider::PatternData data)
-    {
-      if(data.groupID == 0)
-      {
-        for(int i=0;i<NUM_PUBLIC_GROUPS;i++) publicGroups[i].setData(data);
-        for(int i=0;i<numActivePrivateGroups;i++) privateGroups[i].setData(data);
-      }else
-      {
-        int index = data.groupID - 1;
-        if (data.groupIsPublic) //public groups
-        {
-          if(index >= 0 && NUM_PUBLIC_GROUPS) publicGroups[index].setData(data);
-        } else
-        {
-          if(index >= 0 && numActivePrivateGroups) privateGroups[index].setData(data);
-        }
-      }
+    bool haveQueuedPackets() {
+	return uxQueueMessagesWaiting(tx_queue) > 0;
     }
 
-    void wakeUp(int groupID, bool groupIsPublic) {
-       if(groupID == 0)
-      {
-        for(int i=0;i<NUM_PUBLIC_GROUPS;i++) publicGroups[i].wakeUp();
-        for(int i=0;i<numActivePrivateGroups;i++) privateGroups[i].wakeUp();
-      }else
-      {
-        int index = groupID - 1;
-        if (groupIsPublic) //public groups
-        {
-          if(index >= 0 && NUM_PUBLIC_GROUPS) publicGroups[index].wakeUp();
-        } else
-        {
-          if(index >= 0 && numActivePrivateGroups) privateGroups[index].wakeUp();
-        }
-      }
+    void dequeuePacket() {
+	log_v("dequeuing packet");
+	xQueueReceive(tx_queue, &currentPacket, portMAX_DELAY);
     }
 
-    void powerOff(int groupID, bool groupIsPublic) {
-      if(groupID == 0)
-      {
-        for(int i=0;i<NUM_PUBLIC_GROUPS;i++) publicGroups[i].powerOff();
-        for(int i=0;i<numActivePrivateGroups;i++) privateGroups[i].powerOff();
-      }else
-      {
-        int index = groupID - 1;
-        if (groupIsPublic) //public groups
-        {
-          if(index >= 0 && NUM_PUBLIC_GROUPS) publicGroups[index].powerOff();
-        } else
-        {
-          if(index >= 0 && numActivePrivateGroups) privateGroups[index].powerOff();
-        }
-      }
+    void sendNextPacket() {
+	if (remainingRepeats == 0) {
+	    if (!haveQueuedPackets()) {
+		if (isListening)
+		    return;
+		log_v("waiting for tx standby");
+		if (radio.txStandBy()) {
+		    log_v("switching to listening");
+		    radio.startListening();
+		    isListening = true;
+		    return;
+		}
+	    } else {
+		dequeuePacket();
+		remainingRepeats = 3;
+		log_v("dequeued packet");
+	    }
+	}
+
+	if (!radio.txFifoFull()) {
+	    log_v("fifo has space, sending packet, %d remaining", remainingRepeats);
+	    if (isListening) {
+		radio.stopListening();
+		isListening = false;
+	    }
+	    if (radio.writeFast(currentPacket.data, sizeof(currentPacket))) {
+		// success
+		remainingRepeats--;
+		log_v("transmit submitted");
+	    }
+	}
     }
 
-    uint32_t padding;
-
-    //SEND / RECEIVE
-    bool receivePacket() {
-
-      if ( radio.available()) {
-
+    void receivePackets() {
         while (radio.available()) {
-          radio.read(&receivingPacket, sizeof(SyncPacket));
+	    rx_payload_t receivingPacket;
+	    radio.read(&receivingPacket.data, sizeof(receivingPacket.data));
+	    receivingPacket.rssi = 127;
 
-          if (padding != receivingPacket.padding) {
-            DBG("PACKET RECEIVE!!!!!? adjust_active: " + String(receivingPacket.adjust_active) + " poweroff: " + String(receivingPacket.poweroff) + " force_reload: " + String(receivingPacket.force_reload) + " alternate: " + String(receivingPacket.alternate) + " LFO[0]: " + String(receivingPacket.lfo[0]) + " LFO[1]: " + String(receivingPacket.lfo[1]) + " LFO[2]: " + String(receivingPacket.lfo[2]) + " LFO[3]: " + String(receivingPacket.lfo[3]));
-            padding = receivingPacket.padding;
-            print_bytes(&receivingPacket, sizeof(receivingPacket));
-          }
+	    uint16_t group;
+	    memcpy(&group, &receivingPacket.data, sizeof(group));
 
+	    if (doClearGroups)
+		groups.clear();
+	    if (groups.find(group) != groups.end()) {
+		const auto& pkt = groups[group];
+		if (memcmp(pkt.data, receivingPacket.data, sizeof(receivingPacket.data)) == 0) {
+		    continue;
+		}
+		groups[group] = receivingPacket;
+	    } else if (groups.size() < GROUP_SLOTS) {
+		log_v("new group %04x", group);
+		groups[group] = receivingPacket;
+	    }
 
-          //reverse group bytes because address is reversed in rf packet but we read end of address as data to get groupID
+	    log_v("new packet from group %04x", group);
 
-          receivingPacket.groupID = (receivingPacket.groupID >> 8 & 0xff) | ((receivingPacket.groupID & 0xff) << 8);
-
-          if (receivingPacket.groupID >= PUBLIC_GROUP_START_ID && receivingPacket.groupID < PUBLIC_GROUP_START_ID + NUM_PUBLIC_GROUPS)
-          {
-            if(publicGroups[receivingPacket.groupID - PUBLIC_GROUP_START_ID].updateFromPacket(receivingPacket))
-            {
-               sendCommand(RF_DATA);
-            }
-          }else
-          {
-            bool found = false;
-            for(int i=0;i<numActivePrivateGroups;i++)
-            {
-              if(receivingPacket.groupID == privateGroups[i].groupID)
-              {
-                bool newPadding = privateGroups[i].updateFromPacket(receivingPacket);
-                if(newPadding) sendCommand(RF_DATA);
-                found = true;
-                break;
-              }
-            }
-
-            if(!found)
-            {
-              if(syncing)
-              {
-                bool syncingPage = 1; //page 2
-                bool syncingMode = 0; //mode 1
-                bool acceptAll = false;
-                if(acceptAll || (receivingPacket.page == syncingPage && receivingPacket.mode == syncingMode))
-                {
-                   if(numActivePrivateGroups < MAX_PRIVATE_GROUPS)
-                    {
-                      DBG("Adding group : "+String(receivingPacket.groupID)+" at index "+String(numActivePrivateGroups));
-                      digitalWrite(13,HIGH);
-                      delay(50);
-                      digitalWrite(13,LOW);
-                      privateGroups[numActivePrivateGroups].setup(receivingPacket.groupID, &radio);
-                      privateGroups[numActivePrivateGroups].updateFromPacket(receivingPacket);
-                      Config::instance->setRFNetworkId(numActivePrivateGroups, receivingPacket.groupID);
-
-											CommandData groupAdded;
-											groupAdded.type = GROUP_ADDED;
-											groupAdded.value1.intValue = receivingPacket.groupID;
-											sendCommand(groupAdded);
-
-                      numActivePrivateGroups++;
-                   }else
-                   {
-                      DBG("Max groups reached");
-                   }
-                }
-
-              }else if(!syncing)
-              {
-                //DBG("Packet from unknown group received "+String(receivingPacket.groupID));
-              }
-            }
-          }
-
-          onRFData();
+	    auto data_str = std::string((char*)&receivingPacket, sizeof(receivingPacket));
+	    onRFData(data_str);
         }
-
-        return true;
-      }
-
-      return false;
-    }
-
-    void syncRF(float timeout = 0)
-    {
-      syncTime = timeout*1000;
-      DBG("Start Sync with timeout :"+String(syncTime));
-      timeAtSync = millis();
-      syncing = true;
-    }
-
-    void stopSync()
-    {
-      syncing = false;
-      Config::instance->setNumPrivateGroups(numActivePrivateGroups);
-      DBG("Finish sync, got "+String(Config::instance->getNumPrivateGroups())+" groups");
-    }
-
-    void resetSync()
-    {
-      resetPrivateGroups();
-    }
-
-    void resetPrivateGroups()
-    {
-      DBG("Reset private groups !");
-      numActivePrivateGroups = 0;
     }
 
 
@@ -314,10 +178,10 @@ class RFManager :
 
 
     //DATA SYNC
-    typedef void(*RFEvent)();
-    void (*onRFData) ();
+    typedef void(*RFEvent)(const std::string&);
+    RFEvent onRFData;
     void setRFDataCallback (RFEvent func) {
       onRFData = func;
     }
-    static void onRFDataDefaultCallback() {}
+    static void onRFDataDefaultCallback(const std::string&) {}
 };

@@ -13,7 +13,6 @@ public:
 
   WiFiUDP udp;
 
-  bool isInit;
   //tempo
   const int receiveRate = 100; //receive at 20fps max
   long lastReceiveTime;
@@ -22,6 +21,7 @@ public:
   uint8_t streamBuffer[STREAM_MAX_PACKET_SIZE];
   int byteIndex;
   bool hasOverflowed;
+  bool isInit;
 
 
   void  init()

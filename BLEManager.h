@@ -3,10 +3,11 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-
-#define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" // UART service UUID
-#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define FLOWBRIDGE_SERVICE_UUID "49550001-AAD5-59BD-934C-023D807E01D5"
+#define FLOWBRIDGE_RX_CHAR_UUID "49550002-AAD5-59BD-934C-023D807E01D5"
+#define FLOWBRIDGE_TX_CHAR_UUID "49550003-AAD5-59BD-934C-023D807E01D5"
+#define FLOWBRIDGE_CONTROL_CHAR_UUID "49550004-AAD5-59BD-934C-023D807E01D5"
+#define FLOWBRIDGE_NAME_CHAR_UUID "49550005-AAD5-59BD-934C-023D807E01D5"
 
 
 class BLEManager
@@ -20,21 +21,47 @@ class BLEManager
 
         void onConnect(BLEServer* pServer) {
           manager->deviceConnected = true;
-          DBG("BLE is connected.");
+          log_i("BLE is connected.");
         };
 
         void onDisconnect(BLEServer* pServer) {
           manager->deviceConnected = false;
-          DBG("BLE is disconnected.");
+          log_i("BLE is disconnected.");
         }
     };
 
-    class DataCallback: public BLECharacteristicCallbacks {
-        void onWrite(BLECharacteristic *pCharacteristic) {
+    struct TxCallback: public BLECharacteristicCallbacks {
+	BLEManager* manager;
 
-          String message = String(pCharacteristic->getValue().c_str());
-          DBG("[BLE] Received " + message);
-          SerialManager::instance->parseMessage(message);
+	TxCallback(BLEManager* manager_)
+	    : manager{manager_}
+	{}
+
+        void onWrite(BLECharacteristic *pCharacteristic) {
+	    auto&& val = pCharacteristic->getValue();
+	    if (manager->txCallback)
+		manager->txCallback(val);
+        }
+    };
+
+    struct CtrlCallback: public BLECharacteristicCallbacks {
+	BLEManager* manager;
+
+	CtrlCallback(BLEManager* manager_)
+	    : manager{manager_}
+	{}
+
+        void onWrite(BLECharacteristic *pCharacteristic) {
+	    auto&& val = pCharacteristic->getValue();
+	    if (manager->ctrlCallback)
+		manager->ctrlCallback(val);
+        }
+    };
+
+    class NameCallback: public BLECharacteristicCallbacks {
+        void onWrite(BLECharacteristic *pCharacteristic) {
+	    String name = String(pCharacteristic->getValue().c_str());
+	    Config::instance->setDeviceName(name);
         }
     };
 
@@ -43,9 +70,17 @@ class BLEManager
 
     BLEServer *pServer = NULL;
     BLECharacteristic * pTxCharacteristic;
-    bool deviceConnected = false;
+    BLECharacteristic * pRxCharacteristic;
+    BLECharacteristic * pCtrlCharacteristic;
+    BLECharacteristic * pNameCharacteristic;
+
+    using valueCallbackType = void (*)(const std::string&);
+
+    valueCallbackType txCallback;
+    valueCallbackType ctrlCallback;
+
+    volatile bool deviceConnected = false;
     bool oldDeviceConnected = false;
-    uint8_t txValue = 0;
 
     bool isActivated;
 
@@ -61,7 +96,7 @@ class BLEManager
         return;
       }
 
-      String bleName ="FlowConnect "+Config::instance->getDeviceName();
+      String bleName = Config::instance->getDeviceName();
       BLEDevice::init(bleName.c_str());
 
       // Create the BLE Server
@@ -69,27 +104,37 @@ class BLEManager
       pServer->setCallbacks(new ServerCallback(this));
 
       // Create the BLE Service
-      BLEService *pService = pServer->createService(SERVICE_UUID);
+      BLEService *pService = pServer->createService(FLOWBRIDGE_SERVICE_UUID);
 
-      // Create a BLE Characteristic
       pTxCharacteristic = pService->createCharacteristic(
-                            CHARACTERISTIC_UUID_TX,
-                            BLECharacteristic::PROPERTY_NOTIFY
-                          );
+	  FLOWBRIDGE_TX_CHAR_UUID,
+	  BLECharacteristic::PROPERTY_WRITE
+	  );
+      pTxCharacteristic->setCallbacks(new TxCallback(this));
 
-      pTxCharacteristic->addDescriptor(new BLE2902());
+      pRxCharacteristic = pService->createCharacteristic(
+          FLOWBRIDGE_RX_CHAR_UUID,
+          BLECharacteristic::PROPERTY_NOTIFY
+	  );
+      pRxCharacteristic->addDescriptor(new BLE2902());
 
-      BLECharacteristic * pRxCharacteristic = pService->createCharacteristic(
-          CHARACTERISTIC_UUID_RX,
-          BLECharacteristic::PROPERTY_WRITE
-                                              );
+      pCtrlCharacteristic = pService->createCharacteristic(
+	  FLOWBRIDGE_CONTROL_CHAR_UUID,
+	  BLECharacteristic::PROPERTY_WRITE
+	  );
+      pCtrlCharacteristic->setCallbacks(new CtrlCallback(this));
 
-      pRxCharacteristic->setCallbacks(new DataCallback());
+      pNameCharacteristic = pService->createCharacteristic(
+	  FLOWBRIDGE_NAME_CHAR_UUID,
+	  BLECharacteristic::PROPERTY_WRITE
+	  );
+      pNameCharacteristic->setCallbacks(new NameCallback());
 
       // Start the service
       pService->start();
 
       // Start advertising
+      pServer->getAdvertising()->addServiceUUID(FLOWBRIDGE_SERVICE_UUID);
       pServer->getAdvertising()->start();
       DBG("BLE is init with name "+bleName);
     }
@@ -109,5 +154,13 @@ class BLEManager
         // do stuff here on connecting
         oldDeviceConnected = deviceConnected;
       }
+    }
+
+    void sendRxData(const std::string& data) {
+	if (!isActivated)
+	    return;
+
+	pRxCharacteristic->setValue(data);
+	pRxCharacteristic->notify();
     }
 };

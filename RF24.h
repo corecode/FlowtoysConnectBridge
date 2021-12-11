@@ -335,6 +335,12 @@ s   *
   bool rxFifoFull();
 
   /**
+   * Check if the radio can buffer more tx data.
+   * @return True if all three 32-byte tx radio buffers are full
+   */
+  bool txFifoFull();
+
+  /**
    * Enter low-power mode
    *
    * To return to normal power mode, call powerUp().

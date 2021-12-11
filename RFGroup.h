@@ -4,7 +4,7 @@
 #pragma pack(push, 1) // prevents memory alignment from disrupting the layout and size of the network packet
 struct SyncPacket {
   uint16_t groupID;
-  uint32_t padding;
+  uint32_t serial;
   uint8_t lfo[4];
   uint8_t global_hue;
   uint8_t global_sat;
