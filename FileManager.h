@@ -24,10 +24,10 @@ public:
 
    void init()
    {
-      pinMode(SCK_PIN,INPUT_PULLUP); 
-      pinMode(MISO_PIN,INPUT_PULLUP); 
-      pinMode(MOSI_PIN,INPUT_PULLUP); 
-      pinMode(CS_PIN,INPUT_PULLUP); 
+      pinMode(SCK_PIN,INPUT_PULLUP);
+      pinMode(MISO_PIN,INPUT_PULLUP);
+      pinMode(MOSI_PIN,INPUT_PULLUP);
+      pinMode(CS_PIN,INPUT_PULLUP);
 
 #if VERSION == 2
       //Need to activate mosfet
@@ -41,7 +41,7 @@ public:
 
       spiSD.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);//SCK,MISO,MOSI,ss
 
-#if VERSION == 1  
+#if VERSION == 1
       if(SD.begin(CS_PIN, spiSD, SDSPEED))
 #elif VERSION == 2
       if(SD.begin(CS_PIN, spiSD))
@@ -57,14 +57,14 @@ public:
    static File openFile(String fileName, bool forWriting = false, bool deleteIfExists = true)
    {
       if(forWriting && deleteIfExists) deleteFileIfExists(fileName);
-      
+
       if(!fileName.startsWith("/")) fileName = "/"+fileName;
       File f = SD.open(fileName.c_str(), forWriting?FILE_WRITE:FILE_READ);
       DBG("Open file : "+String(f.name()));
       return f;
    }
 
-   
+
 
    static void deleteFileIfExists(String path)
    {

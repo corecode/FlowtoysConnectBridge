@@ -1,7 +1,7 @@
 #include "RF24.h"
 #include "CommandProvider.h"
 
-#pragma pack(push, 1) // prevents memory alignment from disrupting the layout and size of the network packet 
+#pragma pack(push, 1) // prevents memory alignment from disrupting the layout and size of the network packet
 struct SyncPacket {
   uint16_t groupID;
   uint32_t padding;
@@ -73,22 +73,22 @@ class RFGroup
     RF24 * radio = nullptr;
     int groupID = -1;
     SyncPacket packet;
-    
+
     void sendPacket(bool force = false)
     {
       if(groupID <= 0) return;
       if(dirtyCount == 0 && !force) return;
-      
+
       radio->write(&packet, sizeof(SyncPacket));
-      
+
       if(!force) dirtyCount = max(dirtyCount -1, 0);
     }
-    
+
     void setData(CommandProvider::PatternData data, bool doNotUpdateIfSame = false)
     {
       if(doNotUpdateIfSame)
       {
-        
+
         if(packet.page == data.page
         && packet.mode == data.mode
  /*       && packet.lfo_active == data.actives & 1//true;
@@ -117,7 +117,7 @@ class RFGroup
 
       packet.padding++;
       dirtyCount = 5;
-      
+
       packet.page = data.page;
       packet.mode = data.mode;
       packet.wakeup = false;
@@ -153,7 +153,7 @@ class RFGroup
       +", Hue active : "+String(packet.hue_active)+" > hue : "+String(packet.global_hue)+", sat : "+String(packet.global_sat)+", val : "+String(packet.global_val)
       +", speed : "+String(packet.global_speed)+", density : "+String(packet.global_density)
       );
-*/  
+*/
     }
 
      bool updateFromPacket(SyncPacket receivingPacket)
@@ -167,7 +167,7 @@ class RFGroup
 
 
       return false;
-      
+
       //packet.page = receivingPacket.page;
       //packet.mode = receivingPacket.mode;
 
@@ -177,7 +177,7 @@ class RFGroup
       //DBG("Sat : "+String(receivingPacket.global_sat));
       //DBG("Val : "+String(receivingPacket.global_val));
       //DBG("LFO 0 : "+String(receivingPacket.lfo[0]));
-           
+
 /*
       packet.lfo_active = true;
       packet.global_active = true;

@@ -7,28 +7,28 @@ public:
     CommandProvider(String id) :
       providerId(id)
     {
-      setCommandCallback(&CommandProvider::onCommandDefaultCallback);   
+      setCommandCallback(&CommandProvider::onCommandDefaultCallback);
       setPatternCallback(&CommandProvider::onPatternDefaultCallback);
     }
-    
+
     virtual ~CommandProvider()
     {
     }
 
     String providerId;
-    enum CommandType { 
+    enum CommandType {
       SYNC_RF, STOP_SYNC, RESET_SYNC, GROUP_ADDED, SET_WIFI_CREDENTIALS, SET_GLOBAL_CONFIG,
-      WAKEUP, POWEROFF, 
-      PLAY_SHOW, PAUSE_SHOW, STOP_SHOW, RESUME_SHOW, SEEK_SHOW, RF_DATA 
+      WAKEUP, POWEROFF,
+      PLAY_SHOW, PAUSE_SHOW, STOP_SHOW, RESUME_SHOW, SEEK_SHOW, RF_DATA
       };
-    
+
     union var
     {
       int intValue;
       float floatValue;
       char * stringValue;
     };
-      
+
     struct CommandData
     {
       CommandType type;
@@ -47,14 +47,14 @@ public:
       uint8_t mode = 0;
 
       uint8_t actives = 0;
-      
+
       uint8_t hueOffset = 0;
       uint8_t saturation = 0;
       uint8_t brightness = 0;
-        
+
       uint8_t speed = 0;
       uint8_t density = 0;
-      
+
       uint8_t lfo1 = 0;
       uint8_t lfo2 = 0;
       uint8_t lfo3 = 0;
@@ -72,25 +72,25 @@ public:
       data.hueOffset = c.hue;
       data.saturation = c.sat;
       data.brightness = c.val;
-      
+
       return data;
     }
 
-    void sendCommand(CommandType type) { 
+    void sendCommand(CommandType type) {
       CommandData data;
       data.type = type;
       sendCommand(data);
     }
 
-    void sendCommand(CommandData data) { onCommand(providerId, data); } 
-    
+    void sendCommand(CommandData data) { onCommand(providerId, data); }
+
     typedef void(*CommandEvent)(String providerId, CommandData command);
     void (*onCommand) (String providerId, CommandData command);
     void setCommandCallback (CommandEvent func) { onCommand = func; }
     static void onCommandDefaultCallback(String providerId, CommandData command) {}
 
     void sendPattern(PatternData data) { onPattern(providerId, data); }
- 
+
     typedef void(*PatternEvent)(String providerId, PatternData pattern);
     void (*onPattern) (String providerId, PatternData command);
     void setPatternCallback (PatternEvent func) { onPattern = func; }

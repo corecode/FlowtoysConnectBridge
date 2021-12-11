@@ -13,19 +13,19 @@ class OSCManager :
 public:
   OSCManager() : CommandProvider("OSC") {}
   ~OSCManager(){}
-    
+
   WiFiUDP Udp;
   const unsigned int localPort = 9000;        // local port to listen for UDP packets (here's where we send the packets)
   char address[64];
-   
+
   void init()
-  { 
+  {
 
     DBG("Init OSC");
-    
+
     Udp.stop();
     Udp.begin(localPort);
-    
+
     if (!MDNS.begin("flowtoysconnect")) {
         DBG("Error setting up MDNS responder!");
     }else
@@ -37,7 +37,7 @@ public:
     DBG("OSC Initialized");// listening on "+String(buf)+":"+String(localPort));
 
   }
-  
+
   void update() {
     int size = Udp.parsePacket();
     if (size > 0) {
@@ -45,9 +45,9 @@ public:
       while (size--) {
         msg.fill(Udp.read());
       }
-      
-      if (!msg.hasError()) 
-      {     
+
+      if (!msg.hasError())
+      {
         if(msg.fullMatch("/wakeUp"))
         {
            CommandData d;
@@ -82,20 +82,20 @@ public:
         else if(msg.fullMatch("/pattern"))
         {
           PatternData p;
-          
+
           p.groupID = msg.getInt(0);
           p.groupIsPublic = msg.getInt(1);
           p.page = msg.getInt(2);
           p.mode = msg.getInt(3);
 
           p.actives = msg.getInt(4);
-          
+
           p.hueOffset = msg.getInt(5);
           p.saturation = msg.getInt(6);
           p.brightness = msg.getInt(7);
           p.speed = msg.getInt(8);
           p.density = msg.getInt(9);
-          
+
           p.lfo1 = msg.getInt(10);
           p.lfo2 = msg.getInt(11);
           p.lfo3 = msg.getInt(12);
@@ -137,8 +137,8 @@ public:
             d.type = SEEK_SHOW;
             d.value1.floatValue = msg.getFloat(0);
             sendCommand(d);
-        
-        
+
+
         /*else if(msg.fullMatch("/group"))
         {
            CommandData d;
@@ -222,7 +222,7 @@ public:
         {
           globalBrightness = msg.getFloat(0);
        #endif
-       
+
        }else{
           char addr[32];
           msg.getAddress(addr, 0);

@@ -13,24 +13,24 @@
 class WifiManager
 {
 public:
-  WifiManager(){  
+  WifiManager(){
       setCallbackConnectionUpdate(&WifiManager::connectionUpdateDefaultCallback);
   }
-  
+
   ~WifiManager(){}
 
   bool isLocal = false;
   bool isConnected = false;
   bool isConnecting = false;
-  
+
   String ssid;
   String pass;
-  
+
   long timeAtStartConnect;
   long timeAtLastConnect;
 
   bool isActivated;
-  
+
   void init()
   {
     isActivated = Config::instance->getWifiMode();
@@ -41,7 +41,7 @@ public:
       WiFi.disconnect();
       delay(100);
     }
-    
+
     if(!isActivated)
     {
       DBG("Wifi is not activated, not initializing");
@@ -51,21 +51,21 @@ public:
     ssid = Config::instance->getWifiSSID();
     pass = Config::instance->getWifiPassword();
 
-    
+
     DBG("Connecting to Wifi "+ssid+" with password "+pass+"...");
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), pass.c_str());
     WiFi.setSleep(false);
 
-    
+
     timeAtStartConnect = millis();
     timeAtLastConnect = millis();
-    
+
     isLocal = false;
     isConnecting = true;
     setConnected(false);
-    
+
     digitalWrite(13, HIGH);
   }
 
@@ -75,9 +75,9 @@ public:
     if(isLocal || isConnected) return;
 
     if(millis() > timeAtLastConnect + CONNECT_TRYTIME)
-    {      
+    {
       if(WiFi.status() == WL_CONNECTED)
-      {  
+      {
          digitalWrite(13, LOW);
 
          DBG("WiFi Connected, local IP : "+String(WiFi.localIP()[0])+
@@ -88,12 +88,12 @@ public:
         isLocal = false;
         isConnecting = false;
         setConnected(true);
-    
+
          return;
       }
       timeAtLastConnect = millis();
     }
-        
+
     if(millis() > timeAtStartConnect + CONNECT_TIMEOUT)
     {
       DBG("Could not connect to "+ssid);
@@ -105,7 +105,7 @@ public:
         digitalWrite(13, LOW);
         delay(50);
       }
-      
+
       setupLocal();
     }
   }
@@ -123,7 +123,7 @@ public:
     isLocal = true;
     isConnecting = false;
     setConnected(true);
-    
+
     DBG("AP WiFi is init with name "+softAPName+" , pass : "+softAPPass);
   }
 

@@ -34,35 +34,35 @@ class RFManager :
   public:
     RFManager() : CommandProvider("RF"), radio(4, 33) {}
     ~RFManager() {}
-  
+
     RF24 radio; //CE and CS pins for SPI bus on NRF24+
     RFGroup publicGroups[5];
     RFGroup privateGroups[MAX_PRIVATE_GROUPS];
-    
+
     uint8_t address[5] = { 0x01, 0x07, 0xf1, 0, 0 };
     SyncPacket receivingPacket;
 
     long lastSendTime = 0;
     long lastForceSendTime = 0;
-    
+
     int numActivePrivateGroups;
 
     bool syncing;
     long syncTime;
     long timeAtSync;
-    
+
     bool radioIsConnected; //to implement
-    
+
 
     void init()
     {
       syncing = false;
-      
+
       for (int i = 0; i < NUM_PUBLIC_GROUPS; i++) publicGroups[i].setup(PUBLIC_GROUP_START_ID + i, &radio);
 
       numActivePrivateGroups = Config::instance->getNumPrivateGroups();
-      
-      for (int i = 0; i <  numActivePrivateGroups; i++) 
+
+      for (int i = 0; i <  numActivePrivateGroups; i++)
       {
         privateGroups[i].setup(Config::instance->getRFNetworkId(i), &radio);
         DBG(" > Loading private group "+String(i+1)+" : "+String(privateGroups[i].groupID));
@@ -92,7 +92,7 @@ class RFManager :
       {
         stopSync();
       }
-      
+
       receivePacket();
     }
 
@@ -195,7 +195,7 @@ class RFManager :
     }
 
     uint32_t padding;
-    
+
     //SEND / RECEIVE
     bool receivePacket() {
 
@@ -212,9 +212,9 @@ class RFManager :
 
 
           //reverse group bytes because address is reversed in rf packet but we read end of address as data to get groupID
-          
+
           receivingPacket.groupID = (receivingPacket.groupID >> 8 & 0xff) | ((receivingPacket.groupID & 0xff) << 8);
-          
+
           if (receivingPacket.groupID >= PUBLIC_GROUP_START_ID && receivingPacket.groupID < PUBLIC_GROUP_START_ID + NUM_PUBLIC_GROUPS)
           {
             if(publicGroups[receivingPacket.groupID - PUBLIC_GROUP_START_ID].updateFromPacket(receivingPacket))
@@ -244,7 +244,7 @@ class RFManager :
                 bool acceptAll = false;
                 if(acceptAll || (receivingPacket.page == syncingPage && receivingPacket.mode == syncingMode))
                 {
-                   if(numActivePrivateGroups < MAX_PRIVATE_GROUPS) 
+                   if(numActivePrivateGroups < MAX_PRIVATE_GROUPS)
                     {
                       DBG("Adding group : "+String(receivingPacket.groupID)+" at index "+String(numActivePrivateGroups));
                       digitalWrite(13,HIGH);
@@ -265,7 +265,7 @@ class RFManager :
                       DBG("Max groups reached");
                    }
                 }
-               
+
               }else if(!syncing)
               {
                 //DBG("Packet from unknown group received "+String(receivingPacket.groupID));
@@ -311,7 +311,7 @@ class RFManager :
 
     // COMMAND FUNCTIONS
 
-    
+
 
     //DATA SYNC
     typedef void(*RFEvent)();

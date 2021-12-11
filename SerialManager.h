@@ -75,7 +75,7 @@ class SerialManager :
             sendCommand(RESET_SYNC);
           }
           break;
-          
+
         case 'n':
           {
             CommandData d;
@@ -88,10 +88,10 @@ class SerialManager :
               d.value2.stringValue = (char *)split[1].c_str();
               sendCommand(d);
             }
-           
+
           }
           break;
-          
+
         case 'g':
           {
             CommandData d;
@@ -125,14 +125,14 @@ class SerialManager :
           ESP.restart();
         }
         break;
-        
+
         case 'p':
         case 'P':
           {
             PatternData p;
             String split[13];
             int num = splitString(&message[1], split, 13);
-            
+
             if(num > 0) p.groupID = split[0].toInt();
             p.groupIsPublic = command == 'P';
 
@@ -145,7 +145,7 @@ class SerialManager :
             if(num > 5) p.saturation = split[5].toInt();
             if(num > 6) p.brightness = split[6].toInt();
             if(num > 7) p.speed = split[7].toInt();
-            if(num > 8) p.density = split[8].toInt(); 
+            if(num > 8) p.density = split[8].toInt();
 
             if(num > 9) p.lfo1 = split[9].toInt();
             if(num > 10) p.lfo2 = split[10].toInt();

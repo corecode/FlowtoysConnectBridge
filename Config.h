@@ -7,9 +7,9 @@ public:
   static Config * instance;
 
   enum WifiBLEMode { WIFI_ONLY = 0, BLE_ONLY = 1, BOTH = 2 };
-  
+
   Preferences preferences;
-  
+
   Config()
   {
     instance = this;
@@ -34,10 +34,10 @@ public:
   bool getWifiMode() { int mode = preferences.getInt("wifiBLEMode",2); return mode == WIFI_ONLY || mode == BOTH; } //0 is wifi only, 1 is BLE only, 2 is both
   bool getBLEMode() { int mode = preferences.getInt("wifiBLEMode",2); return mode == BLE_ONLY || mode == BOTH; }
   void setWifiBLEMode(int mode) { preferences.putInt("wifiBLEMode", mode); }
- 
+
   String getWifiSSID() { return preferences.getString("ssid","flowspace"); }
   void setWifiSSID(String ssid) { preferences.putString("ssid",ssid); }
-  
+
   String getWifiPassword() { return preferences.getString("pass","flowarts"); }
   void setWifiPassword(String pass) { preferences.putString("pass", pass); }
 

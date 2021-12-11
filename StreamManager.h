@@ -8,7 +8,7 @@ public:
                     hasOverflowed(false),
                     isInit(false)
                    {}
-                   
+
   ~StreamManager() { stop(); }
 
   WiFiUDP udp;
@@ -22,8 +22,8 @@ public:
   uint8_t streamBuffer[STREAM_MAX_PACKET_SIZE];
   int byteIndex;
   bool hasOverflowed;
-    
-  
+
+
   void  init()
   {
     start();
@@ -48,10 +48,10 @@ public:
       {
          //DBG("Receiving !");
           int numRead = udp.read(streamBuffer, STREAM_MAX_PACKET_SIZE);
-         
+
           if(numRead == 0) return false;
           bool isFinal = streamBuffer[numRead - 1] == 255;
-  
+
           if(isFinal)
           {
               if(hasOverflowed) //if had overflowed, discard current packet and reset for next one
@@ -61,10 +61,10 @@ public:
                   hasOverflowed = false;
                   return false;
               }
-              
+
               numRead--;
-          } 
-  
+          }
+
           if(byteIndex + numRead > STREAM_MAX_PACKET_SIZE)
           {
               DBG("Stream OVERFLOW, end index would reach " +String(byteIndex+numRead));
@@ -74,7 +74,7 @@ public:
               //DBG(" > Copying at "+String(byteIndex));
               memcpy((uint8_t *)leds + byteIndex, streamBuffer, numRead);
           }
-          
+
           byteIndex += numRead;
           if (isFinal)
           {
@@ -83,7 +83,7 @@ public:
               return true;
           }
       }
-  
+
       return false;
   }
 
@@ -92,7 +92,7 @@ public:
       udp.begin(8888);
       udp.flush();
   }
-  
+
   void stop()
   {
       udp.flush();

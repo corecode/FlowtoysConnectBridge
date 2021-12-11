@@ -4,7 +4,7 @@
 class Player
 {
   public:
-    
+
     struct PlayerCue
     {
       float time;
@@ -21,27 +21,27 @@ class Player
       uint8_t palette;
     };
 
-    
+
     bool isPlaying;
     bool isPaused;
 
     bool loopAtFinish;
-    
+
     long timeAtPlay; //ms
     long totalTime;
     long currentTime;
     long lastTime;
-    
+
     int currentCue;
     int numCues;
-    
+
     void init()
     {
       loopAtFinish = false;
-      
+
       currentTime = 0;
       currentCue = -1;
-      
+
       DBG("Player init.");
     }
 
@@ -55,7 +55,7 @@ class Player
       if(currentTime >= totalTime)
       {
         DBG("Finished !");
-        if(loopAtFinish) 
+        if(loopAtFinish)
         {
           DBG("Loop.");
           currentTime = 0;
@@ -71,21 +71,21 @@ class Player
     {
       File file = FileManager::openFile(filename);
       DBG("File opened : "+String(file.name())+", size : "+String(file.size())+" bytes");
-      
+
       /*
       totalTime = doc["totalTime"];
       numCues = doc["cues"].size();
-      
+
       for(int i=0;i<numCues;i++)
       {
         cues[i].time = doc["cues"][i]["time"];
-        
+
       }
 
       DBG("File total time : "+String(totalTime));
       */
 
-      
+
       currentTime = 0;
       currentCue = -1;
       isPlaying = true;

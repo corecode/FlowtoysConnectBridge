@@ -25,9 +25,9 @@ class ButtonManager
                         &ButtonManager::buttonDefaultEvent,
                         &ButtonManager::buttonDefaultEvent,
                         &ButtonManager::buttonMultiPressDefaultEvent
-      );  
+      );
     }
-    
+
     ~ButtonManager() {}
 
 #if VERSION == 1
@@ -142,10 +142,10 @@ class ButtonManager
     typedef void(*multiPressEvent)(int,int);
     void (*onButtonMultiPress) (int, int);
 
-    void setEventCallbacks (buttonValueEvent pressFunc, 
-                    buttonEvent shortPressFunc, 
-                    buttonEvent longPressFunc, 
-                    buttonEvent veryLongPressFunc, 
+    void setEventCallbacks (buttonValueEvent pressFunc,
+                    buttonEvent shortPressFunc,
+                    buttonEvent longPressFunc,
+                    buttonEvent veryLongPressFunc,
                     multiPressEvent multiPressFunc
                 ) {
       onButtonPress = pressFunc;

@@ -48,7 +48,7 @@ class BLEManager
     uint8_t txValue = 0;
 
     bool isActivated;
-    
+
     void init()
     {
       // Create the BLE Device
@@ -60,7 +60,7 @@ class BLEManager
         DBG("BLE not activated in preferences, not initializing");
         return;
       }
-      
+
       String bleName ="FlowConnect "+Config::instance->getDeviceName();
       BLEDevice::init(bleName.c_str());
 
@@ -97,7 +97,7 @@ class BLEManager
     void update()
     {
       if(!isActivated) return;
-      
+
       if (!deviceConnected && oldDeviceConnected) {
         delay(500); // give the bluetooth stack the chance to get things ready
         pServer->startAdvertising(); // restart advertising
